@@ -9,9 +9,7 @@ import pytest
 from granite_storage.backends.local import LocalStorageBackend
 from granite_storage.exceptions import ContentTooLargeError, StorageError
 from granite_storage.manager import SizeLimitedStream, StorageManager
-from granite_storage.models import StoredObjectRef
 from granite_storage.policies import StoragePolicy
-
 
 # ---------------------------------------------------------------------------
 # Helpers
