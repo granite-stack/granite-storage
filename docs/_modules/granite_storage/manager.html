@@ -1,0 +1,408 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>granite_storage.manager &mdash; Granite Storage 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+    <link rel="canonical" href="/granite-storage/_modules/granite_storage/manager.html" />
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Granite Storage
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../sqlalchemy-integration.html">SQLAlchemy Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../garbage-collection.html">Garbage Collection</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../implementing-backend.html">Implementing a New Backend</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Granite Storage</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">granite_storage.manager</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for granite_storage.manager</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">BinaryIO</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.contracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">StorageBackend</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContentTooLargeError</span><span class="p">,</span> <span class="n">StorageError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">StoredObjectRef</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.policies</span><span class="w"> </span><span class="kn">import</span> <span class="n">StoragePolicy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_storage_object_key</span>
+
+
+<div class="viewcode-block" id="SizeLimitedStream">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SizeLimitedStream</span><span class="p">(</span><span class="n">io</span><span class="o">.</span><span class="n">BufferedIOBase</span><span class="p">,</span> <span class="n">BinaryIO</span><span class="p">):</span>
+<div class="viewcode-block" id="SizeLimitedStream.__init__">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">stream</span><span class="p">:</span> <span class="n">BinaryIO</span><span class="p">,</span> <span class="n">max_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stream</span> <span class="o">=</span> <span class="n">stream</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span> <span class="o">=</span> <span class="n">max_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chunk_size</span> <span class="o">=</span> <span class="n">chunk_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_read</span> <span class="o">=</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.read">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.read">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+        <span class="n">chunk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">size</span> <span class="k">if</span> <span class="n">size</span> <span class="ow">and</span> <span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">chunk_size</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">chunk</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">total_read</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_read</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ContentTooLargeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Content size exceeds max_size=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">max_size</span><span class="si">}</span><span class="s2"> bytes&quot;</span>
+                <span class="p">)</span>
+        <span class="k">return</span> <span class="n">chunk</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SizeLimitedStream</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">exc_val</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">exc_tb</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<div class="viewcode-block" id="SizeLimitedStream.close">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.close">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.fileno">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.fileno">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">fileno</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">fileno</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.flush">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.flush">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.isatty">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.isatty">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">isatty</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">isatty</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.readable">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.readable">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">readable</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.readline">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.readline">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">readline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">readline</span><span class="p">(</span><span class="n">limit</span> <span class="k">if</span> <span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.readlines">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.readlines">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">readlines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hint</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">readlines</span><span class="p">(</span><span class="n">hint</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.seek">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.seek">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">seek</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">whence</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="n">whence</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.seekable">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.seekable">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">seekable</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">seekable</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.tell">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.tell">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tell</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">tell</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.truncate">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.truncate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">truncate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">truncate</span><span class="p">(</span><span class="n">size</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.writable">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.writable">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">writable</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.write">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.write">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__s</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">io</span><span class="o">.</span><span class="n">UnsupportedOperation</span><span class="p">(</span><span class="s2">&quot;write&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SizeLimitedStream.writelines">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.SizeLimitedStream.writelines">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">writelines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lines</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">io</span><span class="o">.</span><span class="n">UnsupportedOperation</span><span class="p">(</span><span class="s2">&quot;writelines&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SizeLimitedStream</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__next__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+        <span class="n">chunk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">chunk_size</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">chunk</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">StopIteration</span>
+        <span class="k">return</span> <span class="n">chunk</span></div>
+
+
+
+<div class="viewcode-block" id="StorageManager">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.StorageManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StorageManager</span><span class="p">:</span>
+<div class="viewcode-block" id="StorageManager.__init__">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.StorageManager.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">backends</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">StorageBackend</span><span class="p">],</span> <span class="n">policies</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">StoragePolicy</span><span class="p">]</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backends</span> <span class="o">=</span> <span class="n">backends</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">policies</span> <span class="o">=</span> <span class="n">policies</span></div>
+
+
+<div class="viewcode-block" id="StorageManager.get_policy">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.StorageManager.get_policy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">storage_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StoragePolicy</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">policies</span><span class="p">[</span><span class="n">storage_key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">StorageError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown storage policy: </span><span class="si">{</span><span class="n">storage_key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span></div>
+
+
+<div class="viewcode-block" id="StorageManager.get_backend_for_policy">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.StorageManager.get_backend_for_policy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_backend_for_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">policy</span><span class="p">:</span> <span class="n">StoragePolicy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StorageBackend</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">backends</span><span class="p">[</span><span class="n">policy</span><span class="o">.</span><span class="n">backend_key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">StorageError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown backend: </span><span class="si">{</span><span class="n">policy</span><span class="o">.</span><span class="n">backend_key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_location</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">policy</span><span class="p">:</span> <span class="n">StoragePolicy</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">entity_id</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">original_filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">model_path</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">model_name</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">policy</span><span class="o">.</span><span class="n">key_prefix</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">policy</span><span class="o">.</span><span class="n">key_prefix</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">build_storage_object_key</span><span class="p">(</span>
+            <span class="n">model_name</span><span class="o">=</span><span class="n">model_path</span><span class="p">,</span>
+            <span class="n">entity_id</span><span class="o">=</span><span class="n">entity_id</span><span class="p">,</span>
+            <span class="n">field_name</span><span class="o">=</span><span class="n">field_name</span><span class="p">,</span>
+            <span class="n">original_filename</span><span class="o">=</span><span class="n">original_filename</span><span class="p">,</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="StorageManager.put_bytes">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.StorageManager.put_bytes">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">put_bytes</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">storage_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">entity_id</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">content</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span>
+        <span class="n">content_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">original_filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">extra</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StoredObjectRef</span><span class="p">:</span>
+        <span class="n">policy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_policy</span><span class="p">(</span><span class="n">storage_key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">policy</span><span class="o">.</span><span class="n">max_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">policy</span><span class="o">.</span><span class="n">max_size</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="n">ContentTooLargeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Content size </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span><span class="si">}</span><span class="s2"> exceeds max_size=&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">policy</span><span class="o">.</span><span class="n">max_size</span><span class="si">}</span><span class="s2"> for </span><span class="si">{</span><span class="n">storage_key</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_location</span><span class="p">(</span>
+            <span class="n">policy</span><span class="p">,</span>
+            <span class="n">model_name</span><span class="o">=</span><span class="n">model_name</span><span class="p">,</span>
+            <span class="n">entity_id</span><span class="o">=</span><span class="n">entity_id</span><span class="p">,</span>
+            <span class="n">field_name</span><span class="o">=</span><span class="n">field_name</span><span class="p">,</span>
+            <span class="n">original_filename</span><span class="o">=</span><span class="n">original_filename</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">backend</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_backend_for_policy</span><span class="p">(</span><span class="n">policy</span><span class="p">)</span>
+        <span class="n">ref</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">put_bytes</span><span class="p">(</span>
+            <span class="n">key</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
+            <span class="n">content</span><span class="o">=</span><span class="n">content</span><span class="p">,</span>
+            <span class="n">content_type</span><span class="o">=</span><span class="n">content_type</span><span class="p">,</span>
+            <span class="n">original_filename</span><span class="o">=</span><span class="n">original_filename</span><span class="p">,</span>
+            <span class="n">extra</span><span class="o">=</span><span class="n">extra</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">ref</span><span class="o">.</span><span class="n">storage_key</span> <span class="o">=</span> <span class="n">storage_key</span>
+        <span class="k">return</span> <span class="n">ref</span></div>
+
+
+<div class="viewcode-block" id="StorageManager.put_stream">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.StorageManager.put_stream">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">put_stream</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">storage_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">entity_id</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">field_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">stream</span><span class="p">:</span> <span class="n">BinaryIO</span><span class="p">,</span>
+        <span class="n">content_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">original_filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">extra</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StoredObjectRef</span><span class="p">:</span>
+        <span class="n">policy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_policy</span><span class="p">(</span><span class="n">storage_key</span><span class="p">)</span>
+        <span class="n">location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_location</span><span class="p">(</span>
+            <span class="n">policy</span><span class="p">,</span>
+            <span class="n">model_name</span><span class="o">=</span><span class="n">model_name</span><span class="p">,</span>
+            <span class="n">entity_id</span><span class="o">=</span><span class="n">entity_id</span><span class="p">,</span>
+            <span class="n">field_name</span><span class="o">=</span><span class="n">field_name</span><span class="p">,</span>
+            <span class="n">original_filename</span><span class="o">=</span><span class="n">original_filename</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">backend</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_backend_for_policy</span><span class="p">(</span><span class="n">policy</span><span class="p">)</span>
+        <span class="n">limited_stream</span> <span class="o">=</span> <span class="n">SizeLimitedStream</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">max_size</span><span class="o">=</span><span class="n">policy</span><span class="o">.</span><span class="n">max_size</span><span class="p">)</span>
+        <span class="n">ref</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">put_stream</span><span class="p">(</span>
+            <span class="n">key</span><span class="o">=</span><span class="n">location</span><span class="p">,</span>
+            <span class="n">stream</span><span class="o">=</span><span class="n">limited_stream</span><span class="p">,</span>
+            <span class="n">content_type</span><span class="o">=</span><span class="n">content_type</span><span class="p">,</span>
+            <span class="n">original_filename</span><span class="o">=</span><span class="n">original_filename</span><span class="p">,</span>
+            <span class="n">extra</span><span class="o">=</span><span class="n">extra</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">ref</span><span class="o">.</span><span class="n">storage_key</span> <span class="o">=</span> <span class="n">storage_key</span>
+        <span class="k">return</span> <span class="n">ref</span></div>
+
+
+<div class="viewcode-block" id="StorageManager.get">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.StorageManager.get">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_backend_for_policy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_policy</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">storage_key</span><span class="p">))</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StorageManager.open">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.StorageManager.open">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BinaryIO</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_backend_for_policy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_policy</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">storage_key</span><span class="p">))</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StorageManager.delete">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.StorageManager.delete">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_backend_for_policy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_policy</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">storage_key</span><span class="p">))</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StorageManager.exists">
+<a class="viewcode-back" href="../../api/manager.html#granite_storage.manager.StorageManager.exists">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">exists</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_backend_for_policy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_policy</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">storage_key</span><span class="p">))</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, impalah.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

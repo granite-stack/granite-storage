@@ -1,0 +1,365 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Implementing a New Backend &mdash; Granite Storage 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+    <link rel="canonical" href="/granite-storage/implementing-backend.html" />
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api.html" />
+    <link rel="prev" title="Garbage Collection" href="garbage-collection.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Granite Storage
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="user-guide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sqlalchemy-integration.html">SQLAlchemy Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="garbage-collection.html">Garbage Collection</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Implementing a New Backend</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-protocol">The Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#method-contracts">Method Contracts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-google-cloud-storage-backend">Example — Google Cloud Storage Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#registering-the-new-backend">Registering the New Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-your-backend">Testing Your Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#checklist">Checklist</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Granite Storage</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Implementing a New Backend</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/implementing-backend.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="implementing-a-new-backend">
+<h1>Implementing a New Backend<a class="headerlink" href="#implementing-a-new-backend" title="Link to this heading"></a></h1>
+<p>Granite Storage uses the <code class="docutils literal notranslate"><span class="pre">StorageBackend</span></code> protocol (<code class="docutils literal notranslate"><span class="pre">granite_storage.contracts</span></code>)
+as its extension point. Any object that implements the protocol methods can be used
+as a backend — no inheritance required.</p>
+<section id="the-protocol">
+<h2>The Protocol<a class="headerlink" href="#the-protocol" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">BinaryIO</span><span class="p">,</span> <span class="n">Iterator</span><span class="p">,</span> <span class="n">Protocol</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">StoredObjectRef</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">StorageBackend</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+    <span class="n">backend_name</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># unique identifier, e.g. &quot;gcs&quot; or &quot;azure_blob&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">put_bytes</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">content</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span>
+        <span class="n">content_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">original_filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">extra</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StoredObjectRef</span><span class="p">:</span> <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">put_stream</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">stream</span><span class="p">:</span> <span class="n">BinaryIO</span><span class="p">,</span>
+        <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">checksum</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">content_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">original_filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">extra</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StoredObjectRef</span><span class="p">:</span> <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BinaryIO</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">exists</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">iter_locations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span> <span class="o">...</span>
+</pre></div>
+</div>
+</section>
+<section id="method-contracts">
+<h2>Method Contracts<a class="headerlink" href="#method-contracts" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">put_bytes(*,</span> <span class="pre">key,</span> <span class="pre">content,</span> <span class="pre">...)</span></code></dt><dd><p>Write <code class="docutils literal notranslate"><span class="pre">content</span></code> (<code class="docutils literal notranslate"><span class="pre">bytes</span></code>) at the logical path <code class="docutils literal notranslate"><span class="pre">key</span></code> inside the backend.
+Return a fully populated <code class="docutils literal notranslate"><span class="pre">StoredObjectRef</span></code>.  The <code class="docutils literal notranslate"><span class="pre">storage_key</span></code> field of the
+returned ref is filled in by <code class="docutils literal notranslate"><span class="pre">StorageManager</span></code> after the call.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">put_stream(*,</span> <span class="pre">key,</span> <span class="pre">stream,</span> <span class="pre">...)</span></code></dt><dd><p>Write from a file-like object.  The stream is wrapped by <code class="docutils literal notranslate"><span class="pre">SizeLimitedStream</span></code>
+<em>before</em> it reaches the backend, so <code class="docutils literal notranslate"><span class="pre">max_size</span></code> enforcement is handled by the
+manager — the backend does <strong>not</strong> need to re-check it.  Compute checksum and
+byte count during the write.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">get(ref)</span></code></dt><dd><p>Return the full content as <code class="docutils literal notranslate"><span class="pre">bytes</span></code>.  Raise <code class="docutils literal notranslate"><span class="pre">StorageError</span></code> if the object
+does not exist.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">open(ref)</span></code></dt><dd><p>Return a readable, binary file-like object.  The caller is responsible for
+closing it.  Raise <code class="docutils literal notranslate"><span class="pre">StorageError</span></code> if the object does not exist.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">delete(ref)</span></code></dt><dd><p>Remove the object from the backend.  Should be idempotent — do not raise if
+the object is already gone.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">exists(ref)</span></code></dt><dd><p>Return <code class="docutils literal notranslate"><span class="pre">True</span></code> if the object is present in the backend.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">iter_locations(prefix)</span></code></dt><dd><p>Yield every <em>location</em> (string key) stored in the backend, optionally filtered
+by <code class="docutils literal notranslate"><span class="pre">prefix</span></code>.  Used by the garbage collector.</p>
+</dd>
+</dl>
+</section>
+<section id="example-google-cloud-storage-backend">
+<h2>Example — Google Cloud Storage Backend<a class="headerlink" href="#example-google-cloud-storage-backend" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">BinaryIO</span><span class="p">,</span> <span class="n">Iterator</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">google.cloud</span><span class="w"> </span><span class="kn">import</span> <span class="n">storage</span> <span class="k">as</span> <span class="n">gcs</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">StorageError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">StoredObjectRef</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">sha256_bytes</span><span class="p">,</span> <span class="n">utcnow_iso</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">GCSStorageBackend</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Google Cloud Storage backend for Granite Storage.&quot;&quot;&quot;</span>
+
+    <span class="n">backend_name</span> <span class="o">=</span> <span class="s2">&quot;gcs&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">client</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bucket_name</span> <span class="o">=</span> <span class="n">bucket</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="o">=</span> <span class="n">client</span> <span class="ow">or</span> <span class="n">gcs</span><span class="o">.</span><span class="n">Client</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bucket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">bucket</span><span class="p">(</span><span class="n">bucket</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_full_key</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="k">else</span> <span class="n">location</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">put_bytes</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">content</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span>
+        <span class="n">content_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">original_filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">extra</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StoredObjectRef</span><span class="p">:</span>
+        <span class="n">blob</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bucket</span><span class="o">.</span><span class="n">blob</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_full_key</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+        <span class="n">blob</span><span class="o">.</span><span class="n">upload_from_string</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="n">content_type</span> <span class="ow">or</span> <span class="s2">&quot;application/octet-stream&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">StoredObjectRef</span><span class="p">(</span>
+            <span class="n">storage_key</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">backend</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backend_name</span><span class="p">,</span>
+            <span class="n">location</span><span class="o">=</span><span class="n">key</span><span class="p">,</span>
+            <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">content</span><span class="p">),</span>
+            <span class="n">checksum</span><span class="o">=</span><span class="n">sha256_bytes</span><span class="p">(</span><span class="n">content</span><span class="p">),</span>
+            <span class="n">content_type</span><span class="o">=</span><span class="n">content_type</span><span class="p">,</span>
+            <span class="n">original_filename</span><span class="o">=</span><span class="n">original_filename</span><span class="p">,</span>
+            <span class="n">created_at</span><span class="o">=</span><span class="n">utcnow_iso</span><span class="p">(),</span>
+            <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;bucket&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bucket_name</span><span class="p">,</span> <span class="o">**</span><span class="p">(</span><span class="n">extra</span> <span class="ow">or</span> <span class="p">{})},</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">put_stream</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">stream</span><span class="p">:</span> <span class="n">BinaryIO</span><span class="p">,</span>
+        <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">checksum</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">content_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">original_filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">extra</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StoredObjectRef</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>          <span class="c1"># stream is already size-limited by the manager</span>
+        <span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+        <span class="n">blob</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bucket</span><span class="o">.</span><span class="n">blob</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_full_key</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+        <span class="n">blob</span><span class="o">.</span><span class="n">upload_from_string</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="n">content_type</span> <span class="ow">or</span> <span class="s2">&quot;application/octet-stream&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">StoredObjectRef</span><span class="p">(</span>
+            <span class="n">storage_key</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="n">backend</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backend_name</span><span class="p">,</span>
+            <span class="n">location</span><span class="o">=</span><span class="n">key</span><span class="p">,</span>
+            <span class="n">size</span><span class="o">=</span><span class="n">size</span> <span class="k">if</span> <span class="n">size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span>
+            <span class="n">checksum</span><span class="o">=</span><span class="n">checksum</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;sha256:</span><span class="si">{</span><span class="n">digest</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">content_type</span><span class="o">=</span><span class="n">content_type</span><span class="p">,</span>
+            <span class="n">original_filename</span><span class="o">=</span><span class="n">original_filename</span><span class="p">,</span>
+            <span class="n">created_at</span><span class="o">=</span><span class="n">utcnow_iso</span><span class="p">(),</span>
+            <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;bucket&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">bucket_name</span><span class="p">,</span> <span class="o">**</span><span class="p">(</span><span class="n">extra</span> <span class="ow">or</span> <span class="p">{})},</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+        <span class="n">blob</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bucket</span><span class="o">.</span><span class="n">blob</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_full_key</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">blob</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="n">StorageError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;GCS object not found: </span><span class="si">{</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">blob</span><span class="o">.</span><span class="n">download_as_bytes</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BinaryIO</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ref</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">blob</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bucket</span><span class="o">.</span><span class="n">blob</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_full_key</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">blob</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">blob</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">exists</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bucket</span><span class="o">.</span><span class="n">blob</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_full_key</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="p">))</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">iter_locations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="n">blobs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bucket</span><span class="o">.</span><span class="n">list_blobs</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_full_key</span><span class="p">(</span><span class="n">prefix</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
+        <span class="n">strip</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="si">}</span><span class="s2">/&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">blob</span> <span class="ow">in</span> <span class="n">blobs</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">blob</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">strip</span><span class="p">):]</span>
+</pre></div>
+</div>
+</section>
+<section id="registering-the-new-backend">
+<h2>Registering the New Backend<a class="headerlink" href="#registering-the-new-backend" title="Link to this heading"></a></h2>
+<p>Pass your backend instance to <code class="docutils literal notranslate"><span class="pre">StorageManager</span></code> under a unique key:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage</span><span class="w"> </span><span class="kn">import</span> <span class="n">StorageManager</span><span class="p">,</span> <span class="n">StoragePolicy</span>
+
+<span class="n">manager</span> <span class="o">=</span> <span class="n">StorageManager</span><span class="p">(</span>
+    <span class="n">backends</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;gcs&quot;</span><span class="p">:</span> <span class="n">GCSStorageBackend</span><span class="p">(</span><span class="n">bucket</span><span class="o">=</span><span class="s2">&quot;my-bucket&quot;</span><span class="p">)},</span>
+    <span class="n">policies</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;uploads&quot;</span><span class="p">:</span> <span class="n">StoragePolicy</span><span class="p">(</span><span class="s2">&quot;uploads&quot;</span><span class="p">,</span> <span class="n">backend_key</span><span class="o">=</span><span class="s2">&quot;gcs&quot;</span><span class="p">,</span> <span class="n">max_size</span><span class="o">=</span><span class="mi">50</span><span class="o">*</span><span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="p">),</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="testing-your-backend">
+<h2>Testing Your Backend<a class="headerlink" href="#testing-your-backend" title="Link to this heading"></a></h2>
+<p>The built-in test suite uses <code class="docutils literal notranslate"><span class="pre">moto</span></code> to mock S3 and a temporary directory for local
+storage.  For a new backend, mock the external client in your tests:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">MagicMock</span><span class="p">,</span> <span class="n">patch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">my_project.backends.gcs</span><span class="w"> </span><span class="kn">import</span> <span class="n">GCSStorageBackend</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">mock_bucket</span><span class="p">():</span>
+    <span class="n">bucket</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+    <span class="n">blob</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+    <span class="n">bucket</span><span class="o">.</span><span class="n">blob</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">blob</span>
+    <span class="n">blob</span><span class="o">.</span><span class="n">exists</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">blob</span><span class="o">.</span><span class="n">download_as_bytes</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;hello&quot;</span>
+    <span class="k">return</span> <span class="n">bucket</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_get_returns_bytes</span><span class="p">(</span><span class="n">mock_bucket</span><span class="p">):</span>
+    <span class="n">backend</span> <span class="o">=</span> <span class="n">GCSStorageBackend</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">GCSStorageBackend</span><span class="p">)</span>
+    <span class="n">backend</span><span class="o">.</span><span class="n">bucket_name</span> <span class="o">=</span> <span class="s2">&quot;test&quot;</span>
+    <span class="n">backend</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">backend</span><span class="o">.</span><span class="n">_bucket</span> <span class="o">=</span> <span class="n">mock_bucket</span>
+
+    <span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">StoredObjectRef</span>
+    <span class="n">ref</span> <span class="o">=</span> <span class="n">StoredObjectRef</span><span class="p">(</span>
+        <span class="n">storage_key</span><span class="o">=</span><span class="s2">&quot;uploads&quot;</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;gcs&quot;</span><span class="p">,</span> <span class="n">location</span><span class="o">=</span><span class="s2">&quot;user/1/avatar/photo.jpg&quot;</span><span class="p">,</span>
+        <span class="n">size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">checksum</span><span class="o">=</span><span class="s2">&quot;sha256:abc&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">assert</span> <span class="n">backend</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span> <span class="o">==</span> <span class="sa">b</span><span class="s2">&quot;hello&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="checklist">
+<h2>Checklist<a class="headerlink" href="#checklist" title="Link to this heading"></a></h2>
+<p>Before publishing a new backend, verify:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">put_bytes</span></code> and <code class="docutils literal notranslate"><span class="pre">put_stream</span></code> return a <code class="docutils literal notranslate"><span class="pre">StoredObjectRef</span></code> with <code class="docutils literal notranslate"><span class="pre">storage_key=&quot;&quot;</span></code>
+(the manager fills it in).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">delete</span></code> is idempotent — does not raise if the object is absent.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">iter_locations</span></code> yields <em>bare</em> locations (without the backend prefix).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">open</span></code> returns a file-like object that the caller can close normally.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">backend_name</span></code> class attribute is unique.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="garbage-collection.html" class="btn btn-neutral float-left" title="Garbage Collection" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, impalah.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

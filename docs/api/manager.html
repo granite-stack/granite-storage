@@ -1,0 +1,349 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>granite_storage.manager &mdash; Granite Storage 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+    <link rel="canonical" href="/granite-storage/api/manager.html" />
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="granite_storage.policies" href="policies.html" />
+    <link rel="prev" title="API Reference" href="../api.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Granite Storage
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sqlalchemy-integration.html">SQLAlchemy Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../garbage-collection.html">Garbage Collection</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../implementing-backend.html">Implementing a New Backend</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../api.html#core">Core</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">granite_storage.manager</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#granite_storage.manager.SizeLimitedStream"><code class="docutils literal notranslate"><span class="pre">SizeLimitedStream</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#granite_storage.manager.StorageManager"><code class="docutils literal notranslate"><span class="pre">StorageManager</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="policies.html">granite_storage.policies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="models.html">granite_storage.models</a></li>
+<li class="toctree-l3"><a class="reference internal" href="contracts.html">granite_storage.contracts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="exceptions.html">granite_storage.exceptions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="types.html">granite_storage.types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="mixin.html">granite_storage.mixin</a></li>
+<li class="toctree-l3"><a class="reference internal" href="alembic_helpers.html">granite_storage.alembic_helpers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="utils.html">granite_storage.utils</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#backends">Backends</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#integrations">Integrations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api.html#garbage-collection">Garbage Collection</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Granite Storage</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../api.html">API Reference</a></li>
+      <li class="breadcrumb-item active">granite_storage.manager</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/manager.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-granite_storage.manager">
+<span id="granite-storage-manager"></span><h1>granite_storage.manager<a class="headerlink" href="#module-granite_storage.manager" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">granite_storage.manager.</span></span><span class="sig-name descname"><span class="pre">SizeLimitedStream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.BinaryIO" title="(in Python v3.14)"><span class="pre">BinaryIO</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1048576</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/io.html#io.BufferedIOBase" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">BufferedIOBase</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.BinaryIO" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">BinaryIO</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.BinaryIO" title="(in Python v3.14)"><span class="pre">BinaryIO</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1048576</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.close" title="Link to this definition"></a></dt>
+<dd><p>Flush and close the IO object.</p>
+<p>This method has no effect if the file is already closed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.fileno">
+<span class="sig-name descname"><span class="pre">fileno</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.fileno"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.fileno" title="Link to this definition"></a></dt>
+<dd><p>Return underlying file descriptor if one exists.</p>
+<p>Raise OSError if the IO object does not use a file descriptor.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.flush">
+<span class="sig-name descname"><span class="pre">flush</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.flush"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.flush" title="Link to this definition"></a></dt>
+<dd><p>Flush write buffers, if applicable.</p>
+<p>This is not implemented for read-only and non-blocking streams.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.isatty">
+<span class="sig-name descname"><span class="pre">isatty</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.isatty"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.isatty" title="Link to this definition"></a></dt>
+<dd><p>Return whether this is an ‘interactive’ stream.</p>
+<p>Return False if it can’t be determined.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.14)"><span class="pre">bytes</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.read" title="Link to this definition"></a></dt>
+<dd><p>Read and return up to n bytes.</p>
+<p>If the size argument is omitted, None, or negative, read and
+return all data until EOF.</p>
+<p>If the size argument is positive, and the underlying raw stream is
+not ‘interactive’, multiple raw reads may be issued to satisfy
+the byte count (unless EOF is reached first).
+However, for interactive raw streams (as well as sockets and pipes),
+at most one raw read will be issued, and a short result does not
+imply that EOF is imminent.</p>
+<p>Return an empty bytes object on EOF.</p>
+<p>Return None if the underlying raw stream was open in non-blocking
+mode and no data is available at the moment.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.readable">
+<span class="sig-name descname"><span class="pre">readable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.readable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.readable" title="Link to this definition"></a></dt>
+<dd><p>Return whether object was opened for reading.</p>
+<p>If False, read() will raise OSError.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.readline">
+<span class="sig-name descname"><span class="pre">readline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.14)"><span class="pre">bytes</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.readline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.readline" title="Link to this definition"></a></dt>
+<dd><p>Read and return a line from the stream.</p>
+<p>If size is specified, at most size bytes will be read.</p>
+<p>The line terminator is always b’n’ for binary files; for text
+files, the newlines argument to open can be used to select the line
+terminator(s) recognized.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.readlines">
+<span class="sig-name descname"><span class="pre">readlines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hint</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.14)"><span class="pre">bytes</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.readlines"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.readlines" title="Link to this definition"></a></dt>
+<dd><p>Return a list of lines from the stream.</p>
+<p>hint can be specified to control the number of lines read: no more
+lines will be read if the total size (in bytes/characters) of all
+lines so far exceeds hint.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.seek">
+<span class="sig-name descname"><span class="pre">seek</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">whence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.seek"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.seek" title="Link to this definition"></a></dt>
+<dd><p>Change the stream position to the given byte offset.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>offset</dt><dd><p>The stream position, relative to ‘whence’.</p>
+</dd>
+<dt>whence</dt><dd><p>The relative position to seek from.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>The offset is interpreted relative to the position indicated by whence.
+Values for whence are:</p>
+<ul class="simple">
+<li><p>os.SEEK_SET or 0 – start of stream (the default); offset should be zero or positive</p></li>
+<li><p>os.SEEK_CUR or 1 – current stream position; offset may be negative</p></li>
+<li><p>os.SEEK_END or 2 – end of stream; offset is usually negative</p></li>
+</ul>
+<p>Return the new absolute position.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.seekable">
+<span class="sig-name descname"><span class="pre">seekable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.seekable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.seekable" title="Link to this definition"></a></dt>
+<dd><p>Return whether object supports random access.</p>
+<p>If False, seek(), tell() and truncate() will raise OSError.
+This method may need to do a test seek().</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.tell">
+<span class="sig-name descname"><span class="pre">tell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.tell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.tell" title="Link to this definition"></a></dt>
+<dd><p>Return current stream position.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.truncate">
+<span class="sig-name descname"><span class="pre">truncate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.truncate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.truncate" title="Link to this definition"></a></dt>
+<dd><p>Truncate file to size bytes.</p>
+<p>File pointer is left unchanged. Size defaults to the current IO position
+as reported by tell(). Return the new size.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.writable">
+<span class="sig-name descname"><span class="pre">writable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.writable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.writable" title="Link to this definition"></a></dt>
+<dd><p>Return whether object was opened for writing.</p>
+<p>If False, write() will raise OSError.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_SizeLimitedStream__s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.write"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.write" title="Link to this definition"></a></dt>
+<dd><p>Write buffer b to the IO stream.</p>
+<p>Return the number of bytes written, which is always
+the length of b in bytes.</p>
+<p>Raise BlockingIOError if the buffer is full and the
+underlying raw stream cannot accept more data at the moment.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.SizeLimitedStream.writelines">
+<span class="sig-name descname"><span class="pre">writelines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterable" title="(in Python v3.14)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#SizeLimitedStream.writelines"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.SizeLimitedStream.writelines" title="Link to this definition"></a></dt>
+<dd><p>Write a list of lines to stream.</p>
+<p>Line separators are not added, so it is usual for each of the
+lines provided to have a line separator at the end.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="granite_storage.manager.StorageManager">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">granite_storage.manager.</span></span><span class="sig-name descname"><span class="pre">StorageManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">backends</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="contracts.html#granite_storage.contracts.StorageBackend" title="granite_storage.contracts.StorageBackend"><span class="pre">StorageBackend</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">policies</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="policies.html#granite_storage.policies.StoragePolicy" title="granite_storage.policies.StoragePolicy"><span class="pre">StoragePolicy</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/granite_storage/manager.html#StorageManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.StorageManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.StorageManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">backends</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="contracts.html#granite_storage.contracts.StorageBackend" title="granite_storage.contracts.StorageBackend"><span class="pre">StorageBackend</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">policies</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="policies.html#granite_storage.policies.StoragePolicy" title="granite_storage.policies.StoragePolicy"><span class="pre">StoragePolicy</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/granite_storage/manager.html#StorageManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.StorageManager.__init__" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.StorageManager.delete">
+<span class="sig-name descname"><span class="pre">delete</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ref</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="models.html#granite_storage.models.StoredObjectRef" title="granite_storage.models.StoredObjectRef"><span class="pre">StoredObjectRef</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#StorageManager.delete"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.StorageManager.delete" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.StorageManager.exists">
+<span class="sig-name descname"><span class="pre">exists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ref</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="models.html#granite_storage.models.StoredObjectRef" title="granite_storage.models.StoredObjectRef"><span class="pre">StoredObjectRef</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#StorageManager.exists"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.StorageManager.exists" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.StorageManager.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ref</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="models.html#granite_storage.models.StoredObjectRef" title="granite_storage.models.StoredObjectRef"><span class="pre">StoredObjectRef</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.14)"><span class="pre">bytes</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#StorageManager.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.StorageManager.get" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.StorageManager.get_backend_for_policy">
+<span class="sig-name descname"><span class="pre">get_backend_for_policy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">policy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="policies.html#granite_storage.policies.StoragePolicy" title="granite_storage.policies.StoragePolicy"><span class="pre">StoragePolicy</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="contracts.html#granite_storage.contracts.StorageBackend" title="granite_storage.contracts.StorageBackend"><span class="pre">StorageBackend</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#StorageManager.get_backend_for_policy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.StorageManager.get_backend_for_policy" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.StorageManager.get_policy">
+<span class="sig-name descname"><span class="pre">get_policy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">storage_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="policies.html#granite_storage.policies.StoragePolicy" title="granite_storage.policies.StoragePolicy"><span class="pre">StoragePolicy</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#StorageManager.get_policy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.StorageManager.get_policy" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.StorageManager.open">
+<span class="sig-name descname"><span class="pre">open</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ref</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="models.html#granite_storage.models.StoredObjectRef" title="granite_storage.models.StoredObjectRef"><span class="pre">StoredObjectRef</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.BinaryIO" title="(in Python v3.14)"><span class="pre">BinaryIO</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#StorageManager.open"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.StorageManager.open" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.StorageManager.put_bytes">
+<span class="sig-name descname"><span class="pre">put_bytes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">storage_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">entity_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.14)"><span class="pre">bytes</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">content_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">original_filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="models.html#granite_storage.models.StoredObjectRef" title="granite_storage.models.StoredObjectRef"><span class="pre">StoredObjectRef</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#StorageManager.put_bytes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.StorageManager.put_bytes" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="granite_storage.manager.StorageManager.put_stream">
+<span class="sig-name descname"><span class="pre">put_stream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">storage_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">entity_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.BinaryIO" title="(in Python v3.14)"><span class="pre">BinaryIO</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">content_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">original_filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="models.html#granite_storage.models.StoredObjectRef" title="granite_storage.models.StoredObjectRef"><span class="pre">StoredObjectRef</span></a></span></span><a class="reference internal" href="../_modules/granite_storage/manager.html#StorageManager.put_stream"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#granite_storage.manager.StorageManager.put_stream" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../api.html" class="btn btn-neutral float-left" title="API Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="policies.html" class="btn btn-neutral float-right" title="granite_storage.policies" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, impalah.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

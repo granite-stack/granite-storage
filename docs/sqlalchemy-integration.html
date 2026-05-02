@@ -1,0 +1,265 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQLAlchemy Integration &mdash; Granite Storage 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+    <link rel="canonical" href="/granite-storage/sqlalchemy-integration.html" />
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Garbage Collection" href="garbage-collection.html" />
+    <link rel="prev" title="User Guide" href="user-guide.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Granite Storage
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="user-guide.html">User Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">SQLAlchemy Integration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#storedobjectreftype-column-type">StoredObjectRefType — Column Type</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#storedcontentmixin-file-aware-models">StoredContentMixin — File-Aware Models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#alembic-portable-column-type">Alembic — Portable Column Type</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#migrating-an-existing-text-column">Migrating an Existing Text Column</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="garbage-collection.html">Garbage Collection</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="implementing-backend.html">Implementing a New Backend</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Granite Storage</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">SQLAlchemy Integration</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/sqlalchemy-integration.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="sqlalchemy-integration">
+<h1>SQLAlchemy Integration<a class="headerlink" href="#sqlalchemy-integration" title="Link to this heading"></a></h1>
+<p>Granite Storage ships with first-class SQLAlchemy support: a column type that
+transparently serialises <code class="docutils literal notranslate"><span class="pre">StoredObjectRef</span></code> to/from JSON, a mixin that adds
+file-handling methods directly to any ORM model, and an Alembic helper for
+portable column definitions.</p>
+<section id="storedobjectreftype-column-type">
+<h2>StoredObjectRefType — Column Type<a class="headerlink" href="#storedobjectreftype-column-type" title="Link to this heading"></a></h2>
+<p>Use <code class="docutils literal notranslate"><span class="pre">StoredObjectRefType</span></code> as the column type for any column that stores a
+file reference. It wraps SQLAlchemy’s <code class="docutils literal notranslate"><span class="pre">JSON</span></code> (PostgreSQL: <code class="docutils literal notranslate"><span class="pre">JSONB</span></code>) and
+automatically converts between the column value and a <code class="docutils literal notranslate"><span class="pre">StoredObjectRef</span></code>
+instance.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">String</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeclarativeBase</span><span class="p">,</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">mapped_column</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage</span><span class="w"> </span><span class="kn">import</span> <span class="n">StoredObjectRef</span><span class="p">,</span> <span class="n">StoredObjectRefType</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Base</span><span class="p">(</span><span class="n">DeclarativeBase</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">UserProfile</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;user_profile&quot;</span>
+
+    <span class="nb">id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">String</span><span class="p">,</span> <span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">name</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">String</span><span class="p">)</span>
+    <span class="n">avatar</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="n">StoredObjectRef</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span>
+        <span class="n">StoredObjectRefType</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+<p>When you read the row back from the database <code class="docutils literal notranslate"><span class="pre">avatar</span></code> is already a
+<code class="docutils literal notranslate"><span class="pre">StoredObjectRef</span></code> (or <code class="docutils literal notranslate"><span class="pre">None</span></code>). No manual <code class="docutils literal notranslate"><span class="pre">from_dict</span></code> / <code class="docutils literal notranslate"><span class="pre">to_dict</span></code> needed.</p>
+</section>
+<section id="storedcontentmixin-file-aware-models">
+<h2>StoredContentMixin — File-Aware Models<a class="headerlink" href="#storedcontentmixin-file-aware-models" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">StoredContentMixin</span></code> adds <code class="docutils literal notranslate"><span class="pre">set_content()</span></code>, <code class="docutils literal notranslate"><span class="pre">set_content_stream()</span></code>,
+<code class="docutils literal notranslate"><span class="pre">get_content()</span></code>, and <code class="docutils literal notranslate"><span class="pre">delete_content()</span></code> helpers directly to your model class.
+You only need to declare two class variables:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">__stored_content_field_name__</span></code> — the attribute that holds the <code class="docutils literal notranslate"><span class="pre">StoredObjectRef</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">__stored_content_storage_key__</span></code> — the policy name to use by default.</p></li>
+</ul>
+<p>Then configure the manager at startup and inject it into the class.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.orm</span><span class="w"> </span><span class="kn">import</span> <span class="n">DeclarativeBase</span><span class="p">,</span> <span class="n">Mapped</span><span class="p">,</span> <span class="n">mapped_column</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">StorageManager</span><span class="p">,</span> <span class="n">StoragePolicy</span><span class="p">,</span> <span class="n">StoredContentMixin</span><span class="p">,</span>
+    <span class="n">StoredObjectRef</span><span class="p">,</span> <span class="n">StoredObjectRefType</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.backends.local</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalStorageBackend</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Base</span><span class="p">(</span><span class="n">DeclarativeBase</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Document</span><span class="p">(</span><span class="n">Base</span><span class="p">,</span> <span class="n">StoredContentMixin</span><span class="p">):</span>
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;document&quot;</span>
+    <span class="n">__stored_content_field_name__</span> <span class="o">=</span> <span class="s2">&quot;_file_ref&quot;</span>
+    <span class="n">__stored_content_storage_key__</span> <span class="o">=</span> <span class="s2">&quot;documents&quot;</span>
+
+    <span class="nb">id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">()</span>
+    <span class="n">_file_ref</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="n">StoredObjectRef</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span>
+        <span class="n">StoredObjectRefType</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+<span class="c1"># Inject the manager once at startup</span>
+<span class="n">manager</span> <span class="o">=</span> <span class="n">StorageManager</span><span class="p">(</span>
+    <span class="n">backends</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;local&quot;</span><span class="p">:</span> <span class="n">LocalStorageBackend</span><span class="p">(</span><span class="s2">&quot;/var/uploads&quot;</span><span class="p">)},</span>
+    <span class="n">policies</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;documents&quot;</span><span class="p">:</span> <span class="n">StoragePolicy</span><span class="p">(</span><span class="s2">&quot;documents&quot;</span><span class="p">,</span> <span class="s2">&quot;local&quot;</span><span class="p">,</span> <span class="n">max_size</span><span class="o">=</span><span class="mi">10</span><span class="o">*</span><span class="mi">1024</span><span class="o">*</span><span class="mi">1024</span><span class="p">),</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+<span class="n">Document</span><span class="o">.</span><span class="n">__storage_manager__</span> <span class="o">=</span> <span class="n">manager</span>
+
+<span class="c1"># Now any instance can store content</span>
+<span class="n">doc</span> <span class="o">=</span> <span class="n">Document</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Report&quot;</span><span class="p">)</span>
+<span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+<span class="n">session</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>  <span class="c1"># ensure id is set</span>
+
+<span class="n">doc</span><span class="o">.</span><span class="n">set_content</span><span class="p">(</span><span class="n">pdf_bytes</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;report.pdf&quot;</span><span class="p">,</span> <span class="n">content_type</span><span class="o">=</span><span class="s2">&quot;application/pdf&quot;</span><span class="p">)</span>
+<span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+<span class="c1"># Replace existing content</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">replace_content</span><span class="p">(</span><span class="n">new_pdf_bytes</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;report-v2.pdf&quot;</span><span class="p">)</span>
+<span class="c1"># result.previous_ref  →  the old StoredObjectRef (for cleanup)</span>
+<span class="c1"># result.new_ref        →  the new StoredObjectRef</span>
+
+<span class="c1"># Read back</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get_content</span><span class="p">()</span>   <span class="c1"># bytes</span>
+
+<span class="c1"># Delete stored file (sets _file_ref to None)</span>
+<span class="n">doc</span><span class="o">.</span><span class="n">delete_content</span><span class="p">()</span>
+<span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="alembic-portable-column-type">
+<h2>Alembic — Portable Column Type<a class="headerlink" href="#alembic-portable-column-type" title="Link to this heading"></a></h2>
+<p>When writing Alembic migrations use <code class="docutils literal notranslate"><span class="pre">portable_storage_ref_type()</span></code> so that the
+column is <code class="docutils literal notranslate"><span class="pre">JSON</span></code> on SQLite and <code class="docutils literal notranslate"><span class="pre">JSONB</span></code> on PostgreSQL without duplication:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sa</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">alembic</span><span class="w"> </span><span class="kn">import</span> <span class="n">op</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage</span><span class="w"> </span><span class="kn">import</span> <span class="n">portable_storage_ref_type</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">upgrade</span><span class="p">():</span>
+    <span class="n">op</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+        <span class="s2">&quot;document&quot;</span><span class="p">,</span>
+        <span class="n">sa</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="s2">&quot;_file_ref&quot;</span><span class="p">,</span> <span class="n">portable_storage_ref_type</span><span class="p">(),</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">downgrade</span><span class="p">():</span>
+    <span class="n">op</span><span class="o">.</span><span class="n">drop_column</span><span class="p">(</span><span class="s2">&quot;document&quot;</span><span class="p">,</span> <span class="s2">&quot;_file_ref&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="migrating-an-existing-text-column">
+<h2>Migrating an Existing Text Column<a class="headerlink" href="#migrating-an-existing-text-column" title="Link to this heading"></a></h2>
+<p>If you have a column that previously stored inline text and want to migrate it
+to a <code class="docutils literal notranslate"><span class="pre">StoredObjectRef</span></code> JSON column on PostgreSQL:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">alembic</span><span class="w"> </span><span class="kn">import</span> <span class="n">op</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sa</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.dialects</span><span class="w"> </span><span class="kn">import</span> <span class="n">postgresql</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">upgrade</span><span class="p">():</span>
+    <span class="n">op</span><span class="o">.</span><span class="n">alter_column</span><span class="p">(</span>
+        <span class="s2">&quot;section_item&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;content_markdown&quot;</span><span class="p">,</span>
+        <span class="n">existing_type</span><span class="o">=</span><span class="n">sa</span><span class="o">.</span><span class="n">Text</span><span class="p">(),</span>
+        <span class="n">type_</span><span class="o">=</span><span class="n">sa</span><span class="o">.</span><span class="n">JSON</span><span class="p">()</span><span class="o">.</span><span class="n">with_variant</span><span class="p">(</span><span class="n">postgresql</span><span class="o">.</span><span class="n">JSONB</span><span class="p">(),</span> <span class="s2">&quot;postgresql&quot;</span><span class="p">),</span>
+        <span class="n">postgresql_using</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">&quot;CASE WHEN content_markdown IS NULL THEN NULL &quot;</span>
+            <span class="s2">&quot;ELSE jsonb_build_object(&#39;legacy_inline_text&#39;, content_markdown) END&quot;</span>
+        <span class="p">),</span>
+        <span class="n">existing_nullable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="user-guide.html" class="btn btn-neutral float-left" title="User Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="garbage-collection.html" class="btn btn-neutral float-right" title="Garbage Collection" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, impalah.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

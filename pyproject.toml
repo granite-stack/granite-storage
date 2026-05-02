@@ -1,0 +1,98 @@
+[project]
+name = "granite-storage"
+version = "0.1.0"
+description = "Storage abstraction for SQLAlchemy models with local and S3 backends, streaming uploads, and orphan garbage collection."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.12"
+authors = [
+  { name = "Impalah" }
+]
+keywords = [
+  "sqlalchemy",
+  "storage",
+  "s3",
+  "fastapi",
+  "uploads",
+  "garbage-collection"
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Framework :: FastAPI",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+  "SQLAlchemy>=2.0",
+  "boto3>=1.34",
+]
+
+[project.urls]
+Homepage = "https://github.com/granite-stack/granite-storage"
+Documentation = "https://granite-stack.github.io/granite-storage/"
+Source = "https://github.com/granite-stack/granite-storage"
+Tracker = "https://github.com/granite-stack/granite-storage/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "bandit>=1.9.3",
+    "debugpy>=1.8.19",
+    "httpx>=0.28.1",
+    "ipykernel>=7.1.0",
+    "mypy>=1.19.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "pytest-mock>=3.15.1",
+    "ruff>=0.14.14",
+    "mock>=5.2.0",
+    "pytest-env>=1.2.0",
+    "alembic>=1.18.2",
+    "psycopg2-binary>=2.9.11",
+    "uvicorn>=0.40.0",
+    "pysonar>=1.4.0.4676",
+    "moto[s3]>=5.0",
+    "fastapi>=0.110",
+    "psycopg[binary]>=3.1",
+
+]
+docs = [
+    "sphinx>=9.1.0",
+    "sphinx-rtd-theme>=3.1.0",
+    "sphinx-autodoc-typehints>=3.6.2",
+    "myst-parser>=5.0.0",
+    "sphinx-copybutton>=0.5.2",
+    "furo>=2025.12.19",
+]
+
+[tool.ruff]
+line-length = 88
+src = ["src"]  # First, add the source code folder
+target-version = "py312"  # Minimum supported version
+
+[tool.ruff.lint]
+# Activate additional rules to imitate flake8 and isort
+select = [
+  "E", "F", "I", "UP", "B", "W", "C90"
+]
+# Exclude files and folders that are not part of the source code
+exclude = ["tests/data", ".venv"]
+
+# Activate autofix for common problems
+fixable = ["ALL"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+pretty = true
+
