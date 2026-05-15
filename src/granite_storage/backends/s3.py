@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import posixpath
 from collections.abc import Iterator
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, cast
 
 import boto3
 from botocore.client import BaseClient
+from botocore.exceptions import ClientError
 
 from granite_storage.contracts import StorageBackend
+from granite_storage.exceptions import StorageError
 from granite_storage.models import StoredObjectRef
 from granite_storage.utils import DEFAULT_STREAM_CHUNK_SIZE, sha256_bytes, utcnow_iso
 
@@ -54,7 +56,10 @@ class S3StorageBackend(StorageBackend):
         }
         if content_type:
             put_kwargs["ContentType"] = content_type
-        self.client.put_object(**put_kwargs)
+        try:
+            self.client.put_object(**put_kwargs)
+        except ClientError as exc:
+            raise StorageError(f"S3 put_bytes failed for key '{key}': {exc}") from exc
         return StoredObjectRef(
             "",
             self.backend_name,
@@ -100,7 +105,12 @@ class S3StorageBackend(StorageBackend):
             }
             if content_type:
                 put_kwargs["ContentType"] = content_type
-            self.client.put_object(**put_kwargs)
+            try:
+                self.client.put_object(**put_kwargs)
+            except ClientError as exc:
+                raise StorageError(
+                    f"S3 put_stream failed for key '{key}': {exc}"
+                ) from exc
         return StoredObjectRef(
             "",
             self.backend_name,
@@ -114,19 +124,36 @@ class S3StorageBackend(StorageBackend):
         )
 
     def get(self, ref: StoredObjectRef) -> bytes:
-        response = self.client.get_object(
-            Bucket=self.bucket, Key=self._full_key(ref.location)
-        )
-        return response["Body"].read()
+        try:
+            response = self.client.get_object(
+                Bucket=self.bucket, Key=self._full_key(ref.location)
+            )
+            return cast(bytes, response["Body"].read())
+        except ClientError as exc:
+            code = exc.response["Error"]["Code"]
+            if code in ("NoSuchKey", "404"):
+                raise StorageError(f"S3 object not found: {ref.location}") from exc
+            raise StorageError(f"S3 get failed for '{ref.location}': {exc}") from exc
 
     def open(self, ref: StoredObjectRef) -> BinaryIO:
-        response = self.client.get_object(
-            Bucket=self.bucket, Key=self._full_key(ref.location)
-        )
-        return response["Body"]
+        try:
+            response = self.client.get_object(
+                Bucket=self.bucket, Key=self._full_key(ref.location)
+            )
+            return cast(BinaryIO, response["Body"])
+        except ClientError as exc:
+            code = exc.response["Error"]["Code"]
+            if code in ("NoSuchKey", "404"):
+                raise StorageError(f"S3 object not found: {ref.location}") from exc
+            raise StorageError(f"S3 open failed for '{ref.location}': {exc}") from exc
 
     def delete(self, ref: StoredObjectRef) -> None:
-        self.client.delete_object(Bucket=self.bucket, Key=self._full_key(ref.location))
+        try:
+            self.client.delete_object(
+                Bucket=self.bucket, Key=self._full_key(ref.location)
+            )
+        except ClientError as exc:
+            raise StorageError(f"S3 delete failed for '{ref.location}': {exc}") from exc
 
     def exists(self, ref: StoredObjectRef) -> bool:
         try:
@@ -134,14 +161,26 @@ class S3StorageBackend(StorageBackend):
                 Bucket=self.bucket, Key=self._full_key(ref.location)
             )
             return True
-        except Exception:
-            return False
+        except ClientError as exc:
+            code = exc.response["Error"]["Code"]
+            if code in ("404", "NoSuchKey"):
+                return False
+            raise StorageError(
+                f"S3 exists check failed for '{ref.location}': {exc}"
+            ) from exc
 
     def iter_locations(self, prefix: str | None = None) -> Iterator[str]:
         list_prefix = self.prefix
         if prefix:
             list_prefix = posixpath.join(list_prefix, prefix) if list_prefix else prefix
-        paginator = self.client.get_paginator("list_objects_v2")
-        for page in paginator.paginate(Bucket=self.bucket, Prefix=list_prefix or ""):
-            for item in page.get("Contents", []):
-                yield self._strip_prefix(item["Key"])
+        try:
+            paginator = self.client.get_paginator("list_objects_v2")
+            for page in paginator.paginate(
+                Bucket=self.bucket, Prefix=list_prefix or ""
+            ):
+                for item in page.get("Contents", []):
+                    yield self._strip_prefix(item["Key"])
+        except ClientError as exc:
+            raise StorageError(
+                f"S3 iter_locations failed for prefix '{list_prefix}': {exc}"
+            ) from exc

@@ -139,10 +139,7 @@ class StorageManager:
         extra: dict[str, Any] | None = None,
     ) -> StoredObjectRef:
         policy = self.get_policy(storage_key)
-        if (
-            policy.max_size is not None
-            and len(content) > policy.max_size
-        ):
+        if policy.max_size is not None and len(content) > policy.max_size:
             raise ContentTooLargeError(
                 f"Content size {len(content)} exceeds max_size="
                 f"{policy.max_size} for {storage_key}"

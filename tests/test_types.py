@@ -1,4 +1,5 @@
 """Tests for StoredObjectRefType SQLAlchemy type decorator."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -35,7 +36,13 @@ def test_process_bind_param_stored_object_ref() -> None:
 
 def test_process_bind_param_dict_passthrough() -> None:
     t = StoredObjectRefType()
-    raw = {"storage_key": "x", "backend": "local", "location": "a.txt", "size": 1, "checksum": ""}
+    raw = {
+        "storage_key": "x",
+        "backend": "local",
+        "location": "a.txt",
+        "size": 1,
+        "checksum": "",
+    }
     result = t.process_bind_param(raw, MagicMock())
     assert result is raw
 

@@ -1,14 +1,22 @@
 """Additional tests for S3StorageBackend covering uncovered paths."""
+
 from __future__ import annotations
 
 import io
+from unittest.mock import MagicMock, patch
 
 import boto3
 import pytest
+from botocore.exceptions import ClientError
 from moto import mock_aws
 
 from granite_storage.backends.s3 import S3StorageBackend
+from granite_storage.exceptions import StorageError
 from granite_storage.models import StoredObjectRef
+
+
+def _client_error(code: str, operation: str = "Operation") -> ClientError:
+    return ClientError({"Error": {"Code": code, "Message": "mock error"}}, operation)
 
 
 def _make_ref(location: str, bucket: str = "test-bucket") -> StoredObjectRef:
@@ -138,3 +146,94 @@ def test_put_with_extra_put_kwargs(s3_client) -> None:
     )
     ref = backend.put_bytes(key="tagged.txt", content=b"ok")
     assert ref.size == 2
+
+
+# ---------------------------------------------------------------------------
+# Error handling — StorageError wrapping
+# ---------------------------------------------------------------------------
+
+
+def test_get_raises_storage_error_for_missing_key(s3_client) -> None:
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    ref = _make_ref("nonexistent.txt")
+    with pytest.raises(StorageError, match="not found"):
+        backend.get(ref)
+
+
+def test_open_raises_storage_error_for_missing_key(s3_client) -> None:
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    ref = _make_ref("nonexistent.txt")
+    with pytest.raises(StorageError, match="not found"):
+        backend.open(ref)
+
+
+def test_get_raises_storage_error_on_other_client_error(s3_client) -> None:
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    ref = _make_ref("file.txt")
+    with patch.object(
+        s3_client, "get_object", side_effect=_client_error("AccessDenied")
+    ):
+        with pytest.raises(StorageError, match="S3 get failed"):
+            backend.get(ref)
+
+
+def test_open_raises_storage_error_on_other_client_error(s3_client) -> None:
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    ref = _make_ref("file.txt")
+    with patch.object(
+        s3_client, "get_object", side_effect=_client_error("AccessDenied")
+    ):
+        with pytest.raises(StorageError, match="S3 open failed"):
+            backend.open(ref)
+
+
+def test_put_bytes_raises_storage_error_on_client_error(s3_client) -> None:
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    with patch.object(
+        s3_client, "put_object", side_effect=_client_error("NoSuchBucket")
+    ):
+        with pytest.raises(StorageError, match="S3 put_bytes failed"):
+            backend.put_bytes(key="file.txt", content=b"data")
+
+
+def test_put_stream_raises_storage_error_on_client_error(s3_client) -> None:
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    with patch.object(
+        s3_client, "put_object", side_effect=_client_error("NoSuchBucket")
+    ):
+        with pytest.raises(StorageError, match="S3 put_stream failed"):
+            backend.put_stream(key="file.txt", stream=io.BytesIO(b"data"))
+
+
+def test_delete_raises_storage_error_on_client_error(s3_client) -> None:
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    ref = _make_ref("file.txt")
+    with patch.object(
+        s3_client, "delete_object", side_effect=_client_error("AccessDenied")
+    ):
+        with pytest.raises(StorageError, match="S3 delete failed"):
+            backend.delete(ref)
+
+
+def test_exists_returns_false_for_missing_key(s3_client) -> None:
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    assert backend.exists(_make_ref("ghost.txt")) is False
+
+
+def test_exists_raises_storage_error_on_non_404_client_error(s3_client) -> None:
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    ref = _make_ref("file.txt")
+    with patch.object(
+        s3_client, "head_object", side_effect=_client_error("AccessDenied")
+    ):
+        with pytest.raises(StorageError, match="S3 exists check failed"):
+            backend.exists(ref)
+
+
+def test_iter_locations_raises_storage_error_on_client_error(s3_client) -> None:
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    mock_paginator = MagicMock()
+    mock_paginator.paginate.side_effect = _client_error("AccessDenied")
+    with patch.object(s3_client, "get_paginator", return_value=mock_paginator):
+        with pytest.raises(StorageError, match="S3 iter_locations failed"):
+            list(backend.iter_locations())

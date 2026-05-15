@@ -19,7 +19,10 @@ def upgrade():
         "content_markdown",
         existing_type=sa.Text(),
         type_=sa.JSON().with_variant(postgresql.JSONB(), "postgresql"),
-        postgresql_using="CASE WHEN content_markdown IS NULL THEN NULL ELSE jsonb_build_object('legacy_inline_text', content_markdown) END",
+        postgresql_using=(
+            "CASE WHEN content_markdown IS NULL THEN NULL "
+            "ELSE jsonb_build_object('legacy_inline_text', content_markdown) END"
+        ),
         existing_nullable=True,
     )
 """

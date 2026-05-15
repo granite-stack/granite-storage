@@ -6,8 +6,10 @@ from typing import Any, BinaryIO, ClassVar
 try:
     from fastapi import UploadFile
 except Exception:  # pragma: no cover
+
     class UploadFile:  # type: ignore
         pass
+
 
 from granite_storage.exceptions import StorageError
 from granite_storage.manager import StorageManager
@@ -28,15 +30,20 @@ class StoredContentMixin:
     __tablename__: ClassVar[str]
 
     def _require_storage_manager(self) -> StorageManager:
-        manager = getattr(self.__class__, "__storage_manager__", None)
+        manager: StorageManager | None = getattr(
+            self.__class__, "__storage_manager__", None
+        )
         if manager is None:
             raise StorageError(
                 f"Storage manager not configured for {self.__class__.__name__}"
             )
-        return manager  # type: ignore[return-value]
+        return manager
 
     def _get_existing_ref(self) -> StoredObjectRef | None:
-        return getattr(self, self.__stored_content_field_name__, None)  # type: ignore[return-value]
+        ref: StoredObjectRef | None = getattr(
+            self, self.__stored_content_field_name__, None
+        )
+        return ref
 
     def _set_ref(self, ref: StoredObjectRef | None) -> None:
         setattr(self, self.__stored_content_field_name__, ref)
@@ -106,11 +113,11 @@ class StoredContentMixin:
         storage_key: str | None = None,
         extra: dict[str, Any] | None = None,
     ) -> StoredObjectRef:
-        upload_file.file.seek(0)  # type: ignore[attr-defined]
+        upload_file.file.seek(0)
         return self.set_content_from_stream(
-            upload_file.file,  # type: ignore[attr-defined]
-            filename=upload_file.filename,  # type: ignore[attr-defined]
-            content_type=upload_file.content_type,  # type: ignore[attr-defined]
+            upload_file.file,
+            filename=upload_file.filename,
+            content_type=upload_file.content_type,
             storage_key=storage_key,
             extra=extra,
         )

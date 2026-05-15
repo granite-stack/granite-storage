@@ -1,4 +1,5 @@
 """Tests for StorageManager and SizeLimitedStream."""
+
 from __future__ import annotations
 
 import io
@@ -14,6 +15,7 @@ from granite_storage.policies import StoragePolicy
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_manager(tmp_path: Path, max_size: int | None = None) -> StorageManager:
     return StorageManager(
@@ -32,6 +34,7 @@ def _make_manager(tmp_path: Path, max_size: int | None = None) -> StorageManager
 # ---------------------------------------------------------------------------
 # StorageManager – error paths
 # ---------------------------------------------------------------------------
+
 
 def test_get_policy_unknown_raises(tmp_path: Path) -> None:
     manager = _make_manager(tmp_path)
@@ -66,6 +69,7 @@ def test_put_bytes_exceeds_max_size_raises(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # StorageManager – happy paths
 # ---------------------------------------------------------------------------
+
 
 def test_put_bytes_and_get(tmp_path: Path) -> None:
     manager = _make_manager(tmp_path)
@@ -126,9 +130,7 @@ def test_build_location_with_key_prefix(tmp_path: Path) -> None:
 def test_put_bytes_no_prefix(tmp_path: Path) -> None:
     manager = StorageManager(
         backends={"local": LocalStorageBackend(tmp_path)},
-        policies={
-            "bare": StoragePolicy(storage_key="bare", backend_key="local")
-        },
+        policies={"bare": StoragePolicy(storage_key="bare", backend_key="local")},
     )
     ref = manager.put_bytes(
         storage_key="bare",
@@ -143,6 +145,7 @@ def test_put_bytes_no_prefix(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # SizeLimitedStream
 # ---------------------------------------------------------------------------
+
 
 def test_size_limited_stream_within_limit() -> None:
     stream = SizeLimitedStream(io.BytesIO(b"hello"), max_size=100)

@@ -1,4 +1,5 @@
 """Additional tests for LocalStorageBackend covering uncovered paths."""
+
 from __future__ import annotations
 
 import io

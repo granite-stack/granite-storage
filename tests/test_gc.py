@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 from granite_storage import StorageManager, StoragePolicy

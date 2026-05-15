@@ -1,4 +1,5 @@
 """Extended tests for StoredContentMixin covering uncovered paths."""
+
 from __future__ import annotations
 
 import io
@@ -55,6 +56,7 @@ def manager(tmp_path: Path) -> StorageManager:
 # _require_storage_manager
 # ---------------------------------------------------------------------------
 
+
 def test_require_storage_manager_raises_when_not_configured() -> None:
     class Orphan(StoredContentMixin):
         __tablename__ = "orphan"
@@ -71,6 +73,7 @@ def test_require_storage_manager_raises_when_not_configured() -> None:
 # set_content – string input
 # ---------------------------------------------------------------------------
 
+
 def test_set_content_string(manager) -> None:
     obj = Article(id=str(uuid.uuid4()))
     ref = obj.set_content("hello text")
@@ -81,6 +84,7 @@ def test_set_content_string(manager) -> None:
 # ---------------------------------------------------------------------------
 # set_content – missing id
 # ---------------------------------------------------------------------------
+
 
 def test_set_content_without_id_raises(manager) -> None:
     obj = Article()
@@ -93,6 +97,7 @@ def test_set_content_without_id_raises(manager) -> None:
 # set_content_from_stream – missing id
 # ---------------------------------------------------------------------------
 
+
 def test_set_content_from_stream_without_id_raises(manager) -> None:
     obj = Article()
     obj.id = None  # type: ignore[assignment]
@@ -103,6 +108,7 @@ def test_set_content_from_stream_without_id_raises(manager) -> None:
 # ---------------------------------------------------------------------------
 # set_content_from_uploadfile
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_set_content_from_uploadfile(manager) -> None:
@@ -121,6 +127,7 @@ async def test_set_content_from_uploadfile(manager) -> None:
 # open_content
 # ---------------------------------------------------------------------------
 
+
 def test_open_content_returns_none_when_empty(manager) -> None:
     obj = Article(id=str(uuid.uuid4()))
     assert obj.open_content() is None
@@ -138,6 +145,7 @@ def test_open_content_returns_stream(manager) -> None:
 # get_content_text
 # ---------------------------------------------------------------------------
 
+
 def test_get_content_text_returns_none_when_empty(manager) -> None:
     obj = Article(id=str(uuid.uuid4()))
     assert obj.get_content_text() is None
@@ -146,6 +154,7 @@ def test_get_content_text_returns_none_when_empty(manager) -> None:
 # ---------------------------------------------------------------------------
 # clear_content_reference
 # ---------------------------------------------------------------------------
+
 
 def test_clear_content_reference(manager) -> None:
     obj = Article(id=str(uuid.uuid4()))
