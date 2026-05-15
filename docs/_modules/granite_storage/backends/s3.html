@@ -89,12 +89,14 @@
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">posixpath</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterator</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">BinaryIO</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">BinaryIO</span><span class="p">,</span> <span class="n">cast</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">boto3</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">botocore.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseClient</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">botocore.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClientError</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.contracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">StorageBackend</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">StorageError</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">StoredObjectRef</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">granite_storage.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">DEFAULT_STREAM_CHUNK_SIZE</span><span class="p">,</span> <span class="n">sha256_bytes</span><span class="p">,</span> <span class="n">utcnow_iso</span>
 
@@ -148,7 +150,10 @@
         <span class="p">}</span>
         <span class="k">if</span> <span class="n">content_type</span><span class="p">:</span>
             <span class="n">put_kwargs</span><span class="p">[</span><span class="s2">&quot;ContentType&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">content_type</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">put_object</span><span class="p">(</span><span class="o">**</span><span class="n">put_kwargs</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">put_object</span><span class="p">(</span><span class="o">**</span><span class="n">put_kwargs</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">ClientError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">StorageError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;S3 put_bytes failed for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
         <span class="k">return</span> <span class="n">StoredObjectRef</span><span class="p">(</span>
             <span class="s2">&quot;&quot;</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">backend_name</span><span class="p">,</span>
@@ -197,7 +202,12 @@
             <span class="p">}</span>
             <span class="k">if</span> <span class="n">content_type</span><span class="p">:</span>
                 <span class="n">put_kwargs</span><span class="p">[</span><span class="s2">&quot;ContentType&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">content_type</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">put_object</span><span class="p">(</span><span class="o">**</span><span class="n">put_kwargs</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">put_object</span><span class="p">(</span><span class="o">**</span><span class="n">put_kwargs</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">ClientError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">StorageError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;S3 put_stream failed for key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
         <span class="k">return</span> <span class="n">StoredObjectRef</span><span class="p">(</span>
             <span class="s2">&quot;&quot;</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">backend_name</span><span class="p">,</span>
@@ -214,25 +224,42 @@
 <div class="viewcode-block" id="S3StorageBackend.get">
 <a class="viewcode-back" href="../../../api/backends_s3.html#granite_storage.backends.s3.S3StorageBackend.get">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
-        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_object</span><span class="p">(</span>
-            <span class="n">Bucket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span> <span class="n">Key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_full_key</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="p">)</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;Body&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">read</span><span class="p">()</span></div>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_object</span><span class="p">(</span>
+                <span class="n">Bucket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span> <span class="n">Key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_full_key</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;Body&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+        <span class="k">except</span> <span class="n">ClientError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">code</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">response</span><span class="p">[</span><span class="s2">&quot;Error&quot;</span><span class="p">][</span><span class="s2">&quot;Code&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">code</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;NoSuchKey&quot;</span><span class="p">,</span> <span class="s2">&quot;404&quot;</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">StorageError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;S3 object not found: </span><span class="si">{</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+            <span class="k">raise</span> <span class="n">StorageError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;S3 get failed for &#39;</span><span class="si">{</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span></div>
 
 
 <div class="viewcode-block" id="S3StorageBackend.open">
 <a class="viewcode-back" href="../../../api/backends_s3.html#granite_storage.backends.s3.S3StorageBackend.open">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BinaryIO</span><span class="p">:</span>
-        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_object</span><span class="p">(</span>
-            <span class="n">Bucket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span> <span class="n">Key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_full_key</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="p">)</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;Body&quot;</span><span class="p">]</span></div>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_object</span><span class="p">(</span>
+                <span class="n">Bucket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span> <span class="n">Key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_full_key</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">BinaryIO</span><span class="p">,</span> <span class="n">response</span><span class="p">[</span><span class="s2">&quot;Body&quot;</span><span class="p">])</span>
+        <span class="k">except</span> <span class="n">ClientError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">code</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">response</span><span class="p">[</span><span class="s2">&quot;Error&quot;</span><span class="p">][</span><span class="s2">&quot;Code&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">code</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;NoSuchKey&quot;</span><span class="p">,</span> <span class="s2">&quot;404&quot;</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">StorageError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;S3 object not found: </span><span class="si">{</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+            <span class="k">raise</span> <span class="n">StorageError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;S3 open failed for &#39;</span><span class="si">{</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span></div>
 
 
 <div class="viewcode-block" id="S3StorageBackend.delete">
 <a class="viewcode-back" href="../../../api/backends_s3.html#granite_storage.backends.s3.S3StorageBackend.delete">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">delete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref</span><span class="p">:</span> <span class="n">StoredObjectRef</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">delete_object</span><span class="p">(</span><span class="n">Bucket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span> <span class="n">Key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_full_key</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="p">))</span></div>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">delete_object</span><span class="p">(</span>
+                <span class="n">Bucket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span> <span class="n">Key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_full_key</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="n">ClientError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">StorageError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;S3 delete failed for &#39;</span><span class="si">{</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span></div>
 
 
 <div class="viewcode-block" id="S3StorageBackend.exists">
@@ -243,8 +270,13 @@
                 <span class="n">Bucket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span> <span class="n">Key</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_full_key</span><span class="p">(</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="p">)</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="kc">True</span>
-        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">False</span></div>
+        <span class="k">except</span> <span class="n">ClientError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">code</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">response</span><span class="p">[</span><span class="s2">&quot;Error&quot;</span><span class="p">][</span><span class="s2">&quot;Code&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">code</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;404&quot;</span><span class="p">,</span> <span class="s2">&quot;NoSuchKey&quot;</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">raise</span> <span class="n">StorageError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;S3 exists check failed for &#39;</span><span class="si">{</span><span class="n">ref</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span></div>
 
 
 <div class="viewcode-block" id="S3StorageBackend.iter_locations">
@@ -253,10 +285,17 @@
         <span class="n">list_prefix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span>
         <span class="k">if</span> <span class="n">prefix</span><span class="p">:</span>
             <span class="n">list_prefix</span> <span class="o">=</span> <span class="n">posixpath</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">list_prefix</span><span class="p">,</span> <span class="n">prefix</span><span class="p">)</span> <span class="k">if</span> <span class="n">list_prefix</span> <span class="k">else</span> <span class="n">prefix</span>
-        <span class="n">paginator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_paginator</span><span class="p">(</span><span class="s2">&quot;list_objects_v2&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">paginator</span><span class="o">.</span><span class="n">paginate</span><span class="p">(</span><span class="n">Bucket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span> <span class="n">Prefix</span><span class="o">=</span><span class="n">list_prefix</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">page</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Contents&quot;</span><span class="p">,</span> <span class="p">[]):</span>
-                <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">_strip_prefix</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;Key&quot;</span><span class="p">])</span></div>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">paginator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_paginator</span><span class="p">(</span><span class="s2">&quot;list_objects_v2&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">paginator</span><span class="o">.</span><span class="n">paginate</span><span class="p">(</span>
+                <span class="n">Bucket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bucket</span><span class="p">,</span> <span class="n">Prefix</span><span class="o">=</span><span class="n">list_prefix</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+            <span class="p">):</span>
+                <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">page</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Contents&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                    <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">_strip_prefix</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;Key&quot;</span><span class="p">])</span>
+        <span class="k">except</span> <span class="n">ClientError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">StorageError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;S3 iter_locations failed for prefix &#39;</span><span class="si">{</span><span class="n">list_prefix</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span></div>
 </div>
 
 </pre></div>

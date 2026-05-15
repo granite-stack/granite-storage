@@ -109,7 +109,10 @@
 <span class="s2">        &quot;content_markdown&quot;,</span>
 <span class="s2">        existing_type=sa.Text(),</span>
 <span class="s2">        type_=sa.JSON().with_variant(postgresql.JSONB(), &quot;postgresql&quot;),</span>
-<span class="s2">        postgresql_using=&quot;CASE WHEN content_markdown IS NULL THEN NULL ELSE jsonb_build_object(&#39;legacy_inline_text&#39;, content_markdown) END&quot;,</span>
+<span class="s2">        postgresql_using=(</span>
+<span class="s2">            &quot;CASE WHEN content_markdown IS NULL THEN NULL &quot;</span>
+<span class="s2">            &quot;ELSE jsonb_build_object(&#39;legacy_inline_text&#39;, content_markdown) END&quot;</span>
+<span class="s2">        ),</span>
 <span class="s2">        existing_nullable=True,</span>
 <span class="s2">    )</span>
 <span class="s2">&quot;&quot;&quot;</span>
