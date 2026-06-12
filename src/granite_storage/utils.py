@@ -39,11 +39,22 @@ def safe_suffix(filename: str | None) -> str:
 def build_storage_object_key(
     *,
     model_name: str,
-    entity_id: uuid.UUID | str,
-    field_name: str,
+    entity_id: uuid.UUID | str | None = None,
+    field_name: str | None = None,
     original_filename: str | None = None,
 ) -> str:
-    entity_id_str = str(entity_id)
-    version = uuid.uuid4().hex[:8]
+    """Generate a storage key using a dedicated UUID subdirectory.
+
+    Layout: ``{model_name}/{file_uuid}/{file_uuid}{ext}``
+
+    The UUID subfolder isolates each stored object so that a CloudFront
+    wildcard policy (``{model_name}/{file_uuid}/*``) can cover the file and
+    any future derivatives (thumbnails, transcoded variants, etc.) with a
+    single signed credential.
+
+    If *entity_id* is provided it is used as the UUID segment; otherwise a
+    fresh UUID is generated.
+    """
+    file_uuid = str(entity_id) if entity_id is not None else str(uuid.uuid4())
     suffix = safe_suffix(original_filename)
-    return posixpath.join(model_name, f"{entity_id_str}-{version}{suffix}")
+    return posixpath.join(model_name, file_uuid, f"{file_uuid}{suffix}")
