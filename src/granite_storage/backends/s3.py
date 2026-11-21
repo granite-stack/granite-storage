@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import tempfile
 from collections.abc import Iterator
+from datetime import datetime
 from typing import Any, BinaryIO, cast
 
 try:
@@ -202,6 +203,20 @@ class S3StorageBackend(StorageBackend):
             raise StorageError(
                 f"S3 exists check failed for '{ref.location}': {exc}"
             ) from exc
+
+    def last_modified(self, location: str) -> datetime | None:
+        """``LastModified`` of *location*, or ``None`` if it does not exist."""
+        try:
+            response = self.client.head_object(
+                Bucket=self.bucket, Key=self._full_key(location)
+            )
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] in ("404", "NoSuchKey"):
+                return None
+            raise StorageError(f"S3 head failed for '{location}': {exc}") from exc
+        except BotoCoreError as exc:
+            raise StorageError(f"S3 head failed for '{location}': {exc}") from exc
+        return cast(datetime, response["LastModified"])
 
     def iter_locations(self, prefix: str | None = None) -> Iterator[str]:
         """Yield locations under *prefix* (whole path segments only).

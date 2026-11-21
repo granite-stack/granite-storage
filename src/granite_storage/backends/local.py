@@ -5,6 +5,7 @@ import hashlib
 import os
 import tempfile
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, BinaryIO
 
@@ -196,6 +197,16 @@ class LocalStorageBackend(StorageBackend):
 
     def exists(self, ref: StoredObjectRef) -> bool:
         return self._resolve_path(ref.location).is_file()
+
+    def last_modified(self, location: str) -> datetime | None:
+        """Modification time of *location*, or ``None`` if it does not exist."""
+        try:
+            mtime = self._resolve_path(location).stat().st_mtime
+        except FileNotFoundError:
+            return None
+        except OSError as exc:
+            raise StorageError(f"Local stat failed for {location}: {exc}") from exc
+        return datetime.fromtimestamp(mtime, UTC)
 
     def iter_locations(self, prefix: str | None = None) -> Iterator[str]:
         """Yield stored locations under *prefix* (whole path segments only)."""
