@@ -79,10 +79,10 @@ def test_put_stream_explicit_size_and_checksum(s3_client) -> None:
         key="explicit.bin",
         stream=io.BytesIO(b"abc"),
         size=3,
-        checksum="md5:xyz",
+        checksum="sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
     )
     assert ref.size == 3
-    assert ref.checksum == "md5:xyz"
+    assert ref.checksum.startswith("sha256:ba7816bf")
 
 
 def test_open_returns_bytes(s3_client) -> None:
@@ -237,3 +237,75 @@ def test_iter_locations_raises_storage_error_on_client_error(s3_client) -> None:
     with patch.object(s3_client, "get_paginator", return_value=mock_paginator):
         with pytest.raises(StorageError, match="S3 iter_locations failed"):
             list(backend.iter_locations())
+
+
+# --- review fixes (GS-009, GS-016, GS-017) ---------------------------------
+
+
+def test_botocore_errors_are_wrapped_in_storage_error(s3_client) -> None:
+    from botocore.exceptions import EndpointConnectionError
+
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    ref = _make_ref("file.txt")
+    err = EndpointConnectionError(endpoint_url="http://nowhere")
+    for method, op in (
+        ("put_object", lambda: backend.put_bytes(key="f.txt", content=b"x")),
+        (
+            "put_object",
+            lambda: backend.put_stream(key="f.txt", stream=io.BytesIO(b"x")),
+        ),
+        ("get_object", lambda: backend.get(ref)),
+        ("get_object", lambda: backend.open(ref)),
+        ("delete_object", lambda: backend.delete(ref)),
+        ("head_object", lambda: backend.exists(ref)),
+    ):
+        with patch.object(s3_client, method, side_effect=err):
+            with pytest.raises(StorageError):
+                op()
+
+
+def test_iter_locations_botocore_error_is_wrapped(s3_client) -> None:
+    from botocore.exceptions import EndpointConnectionError
+
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    with patch.object(
+        s3_client,
+        "get_paginator",
+        side_effect=EndpointConnectionError(endpoint_url="http://nowhere"),
+    ):
+        with pytest.raises(StorageError):
+            list(backend.iter_locations("docs"))
+
+
+def test_iter_locations_prefix_does_not_match_sibling_prefix(s3_client) -> None:
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    backend.put_bytes(key="docs/a.txt", content=b"x")
+    backend.put_bytes(key="docs2/b.txt", content=b"x")
+    assert list(backend.iter_locations("docs")) == ["docs/a.txt"]
+    assert list(backend.iter_locations("docs/")) == ["docs/a.txt"]
+
+
+def test_iter_locations_prefix_with_backend_prefix(s3_client) -> None:
+    backend = S3StorageBackend(bucket="test-bucket", prefix="p", client=s3_client)
+    backend.put_bytes(key="docs/a.txt", content=b"x")
+    backend.put_bytes(key="docs2/b.txt", content=b"x")
+    assert list(backend.iter_locations("docs")) == ["docs/a.txt"]
+
+
+def test_put_stream_verifies_declared_size_and_checksum(s3_client) -> None:
+    backend = S3StorageBackend(bucket="test-bucket", client=s3_client)
+    with pytest.raises(StorageError):
+        backend.put_stream(key="a.txt", stream=io.BytesIO(b"abc"), size=1)
+    with pytest.raises(StorageError):
+        backend.put_stream(key="a.txt", stream=io.BytesIO(b"abc"), checksum="md5:x")
+    with pytest.raises(StorageError):
+        backend.put_stream(key="a.txt", stream=io.BytesIO(b"abc"), checksum="sha256:0")
+    assert list(backend.iter_locations()) == []
+
+
+def test_backends_package_exposes_s3_lazily() -> None:
+    import granite_storage.backends as backends
+
+    assert backends.S3StorageBackend is S3StorageBackend
+    with pytest.raises(AttributeError):
+        backends.Nope  # noqa: B018

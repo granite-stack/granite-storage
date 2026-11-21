@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+import hashlib
+import tempfile
 from collections.abc import Iterator
 from typing import Any, BinaryIO, cast
 
-import boto3
-from botocore.client import BaseClient
-from botocore.exceptions import ClientError
+try:
+    import boto3
+    from botocore.client import BaseClient
+    from botocore.exceptions import BotoCoreError, ClientError
+except ImportError as exc:  # pragma: no cover - depends on the environment
+    raise ImportError(
+        "S3StorageBackend requires boto3. "
+        "Install it with: pip install 'granite-storage[s3]'"
+    ) from exc
 
 from granite_storage.contracts import StorageBackend
 from granite_storage.exceptions import StorageError
@@ -15,10 +23,16 @@ from granite_storage.utils import (
     sha256_bytes,
     utcnow_iso,
     validate_storage_key,
+    verify_declared_checksum,
 )
 
 
 class S3StorageBackend(StorageBackend):
+    """S3 backend. Objects are uploaded with a single ``put_object`` call
+    (S3 limit: 5 GiB per object). Every boto3/botocore failure is raised as
+    :class:`StorageError`.
+    """
+
     backend_name = "s3"
 
     def __init__(
@@ -63,7 +77,7 @@ class S3StorageBackend(StorageBackend):
             put_kwargs["ContentType"] = content_type
         try:
             self.client.put_object(**put_kwargs)
-        except ClientError as exc:
+        except (ClientError, BotoCoreError) as exc:
             raise StorageError(f"S3 put_bytes failed for key '{key}': {exc}") from exc
         return StoredObjectRef(
             "",
@@ -88,9 +102,6 @@ class S3StorageBackend(StorageBackend):
         original_filename: str | None = None,
         extra: dict[str, Any] | None = None,
     ) -> StoredObjectRef:
-        import hashlib
-        import tempfile
-
         digest = hashlib.sha256()
         total = 0
         with tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024) as tmp:
@@ -101,6 +112,11 @@ class S3StorageBackend(StorageBackend):
                 total += len(chunk)
                 digest.update(chunk)
                 tmp.write(chunk)
+            if size is not None and size != total:
+                raise StorageError(
+                    f"Declared size {size} does not match streamed size {total}."
+                )
+            verify_declared_checksum(checksum, digest.hexdigest())
             tmp.seek(0)
             put_kwargs = {
                 "Bucket": self.bucket,
@@ -112,7 +128,7 @@ class S3StorageBackend(StorageBackend):
                 put_kwargs["ContentType"] = content_type
             try:
                 self.client.put_object(**put_kwargs)
-            except ClientError as exc:
+            except (ClientError, BotoCoreError) as exc:
                 raise StorageError(
                     f"S3 put_stream failed for key '{key}': {exc}"
                 ) from exc
@@ -120,8 +136,8 @@ class S3StorageBackend(StorageBackend):
             "",
             self.backend_name,
             key,
-            size if size is not None else total,
-            checksum or f"sha256:{digest.hexdigest()}",
+            total,
+            f"sha256:{digest.hexdigest()}",
             content_type,
             original_filename,
             utcnow_iso(),
@@ -139,8 +155,15 @@ class S3StorageBackend(StorageBackend):
             if code in ("NoSuchKey", "404"):
                 raise StorageError(f"S3 object not found: {ref.location}") from exc
             raise StorageError(f"S3 get failed for '{ref.location}': {exc}") from exc
+        except (BotoCoreError, OSError) as exc:
+            raise StorageError(f"S3 get failed for '{ref.location}': {exc}") from exc
 
     def open(self, ref: StoredObjectRef) -> BinaryIO:
+        """Return the object's body as a non-seekable stream.
+
+        This is botocore's ``StreamingBody`` holding an open HTTP connection:
+        the caller must ``close()`` it (or use ``contextlib.closing``).
+        """
         try:
             response = self.client.get_object(
                 Bucket=self.bucket, Key=self._full_key(ref.location)
@@ -151,13 +174,15 @@ class S3StorageBackend(StorageBackend):
             if code in ("NoSuchKey", "404"):
                 raise StorageError(f"S3 object not found: {ref.location}") from exc
             raise StorageError(f"S3 open failed for '{ref.location}': {exc}") from exc
+        except (BotoCoreError, OSError) as exc:
+            raise StorageError(f"S3 open failed for '{ref.location}': {exc}") from exc
 
     def delete(self, ref: StoredObjectRef) -> None:
         try:
             self.client.delete_object(
                 Bucket=self.bucket, Key=self._full_key(ref.location)
             )
-        except ClientError as exc:
+        except (ClientError, BotoCoreError) as exc:
             raise StorageError(f"S3 delete failed for '{ref.location}': {exc}") from exc
 
     def exists(self, ref: StoredObjectRef) -> bool:
@@ -173,12 +198,21 @@ class S3StorageBackend(StorageBackend):
             raise StorageError(
                 f"S3 exists check failed for '{ref.location}': {exc}"
             ) from exc
+        except BotoCoreError as exc:
+            raise StorageError(
+                f"S3 exists check failed for '{ref.location}': {exc}"
+            ) from exc
 
     def iter_locations(self, prefix: str | None = None) -> Iterator[str]:
-        list_prefix = self.prefix
+        """Yield locations under *prefix* (whole path segments only).
+
+        Same semantics as the local backend: ``"docs"`` matches ``docs/...``
+        but not ``docs2/...``.
+        """
+        list_prefix = f"{self.prefix}/" if self.prefix else ""
         if prefix:
             validate_storage_key(prefix, is_prefix=True)
-            list_prefix = f"{list_prefix}/{prefix}" if list_prefix else prefix
+            list_prefix = f"{list_prefix}{prefix.rstrip('/')}/"
         try:
             paginator = self.client.get_paginator("list_objects_v2")
             for page in paginator.paginate(
@@ -186,7 +220,7 @@ class S3StorageBackend(StorageBackend):
             ):
                 for item in page.get("Contents", []):
                     yield self._strip_prefix(item["Key"])
-        except ClientError as exc:
+        except (ClientError, BotoCoreError) as exc:
             raise StorageError(
                 f"S3 iter_locations failed for prefix '{list_prefix}': {exc}"
             ) from exc

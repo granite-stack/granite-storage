@@ -729,14 +729,19 @@ name = "granite-storage"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "boto3" },
     { name = "sqlalchemy" },
+]
+
+[package.optional-dependencies]
+s3 = [
+    { name = "boto3" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "alembic" },
     { name = "bandit" },
+    { name = "boto3" },
     { name = "debugpy" },
     { name = "fastapi" },
     { name = "httpx" },
@@ -767,14 +772,16 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "boto3", specifier = ">=1.34" },
+    { name = "boto3", marker = "extra == 's3'", specifier = ">=1.34" },
     { name = "sqlalchemy", specifier = ">=2.0" },
 ]
+provides-extras = ["s3"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "alembic", specifier = ">=1.18.2" },
     { name = "bandit", specifier = ">=1.9.3" },
+    { name = "boto3", specifier = ">=1.34" },
     { name = "debugpy", specifier = ">=1.8.19" },
     { name = "fastapi", specifier = ">=0.110" },
     { name = "httpx", specifier = ">=0.28.1" },
