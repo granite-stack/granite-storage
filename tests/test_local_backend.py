@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 from pathlib import Path
 
@@ -37,19 +38,22 @@ def test_put_bytes_with_content_type_and_extra(tmp_path: Path) -> None:
     assert ref.size == 5
 
 
+_SHA4 = "sha256:" + hashlib.sha256(b"data").hexdigest()
+
+
 def test_put_stream_with_explicit_checksum_and_size(tmp_path: Path) -> None:
     backend = LocalStorageBackend(tmp_path)
     ref = backend.put_stream(
         key="dir/file.bin",
         stream=io.BytesIO(b"data"),
         size=4,
-        checksum="md5:abc",
+        checksum=_SHA4,
         content_type="application/octet-stream",
         original_filename="file.bin",
         extra={"env": "test"},
     )
     assert ref.size == 4
-    assert ref.checksum == "md5:abc"
+    assert ref.checksum == _SHA4
     assert ref.content_type == "application/octet-stream"
 
 

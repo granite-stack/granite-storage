@@ -12,6 +12,17 @@ from granite_storage.utils import build_storage_object_key
 
 
 class SizeLimitedStream(io.BufferedIOBase, BinaryIO):
+    """Read-only wrapper that enforces a cumulative size limit.
+
+    Every read path (``read``, ``read1``, ``readinto``, ``readline``,
+    ``readlines`` and iteration) counts the bytes it returns and raises
+    :class:`ContentTooLargeError` once ``max_size`` is exceeded.
+
+    The wrapped stream belongs to the caller: ``close()`` (and garbage
+    collection) only marks this wrapper as closed and never closes it.
+    The wrapper is not seekable, because rewinding would break the count.
+    """
+
     def __init__(
         self, stream: BinaryIO, max_size: int | None, chunk_size: int = 1024 * 1024
     ):
@@ -20,15 +31,50 @@ class SizeLimitedStream(io.BufferedIOBase, BinaryIO):
         self.chunk_size = chunk_size
         self.total_read = 0
 
-    def read(self, size: int | None = -1) -> bytes:
-        chunk = self.stream.read(size if size and size > 0 else self.chunk_size)
-        if chunk:
-            self.total_read += len(chunk)
+    def _count(self, data: bytes) -> bytes:
+        if data:
+            self.total_read += len(data)
             if self.max_size is not None and self.total_read > self.max_size:
                 raise ContentTooLargeError(
                     f"Content size exceeds max_size={self.max_size} bytes"
                 )
-        return chunk
+        return data
+
+    def read(self, size: int | None = -1) -> bytes:
+        if size is None or size < 0:
+            parts: list[bytes] = []
+            while True:
+                chunk = self._count(self.stream.read(self.chunk_size))
+                if not chunk:
+                    return b"".join(parts)
+                parts.append(chunk)
+        if size == 0:
+            return b""
+        return self._count(self.stream.read(size))
+
+    def read1(self, size: int = -1) -> bytes:
+        return self._count(self.stream.read(size if size > 0 else self.chunk_size))
+
+    def readinto(self, buffer: Any) -> int:
+        view = memoryview(buffer).cast("B")
+        data = self.read(len(view))
+        view[: len(data)] = data
+        return len(data)
+
+    def readline(self, limit: int | None = -1) -> bytes:
+        return self._count(self.stream.readline(limit if limit is not None else -1))
+
+    def readlines(self, hint: int = -1) -> list[bytes]:
+        lines: list[bytes] = []
+        total = 0
+        while True:
+            line = self.readline()
+            if not line:
+                return lines
+            lines.append(line)
+            total += len(line)
+            if 0 < hint <= total:
+                return lines
 
     def __enter__(self) -> SizeLimitedStream:
         return self
@@ -36,14 +82,11 @@ class SizeLimitedStream(io.BufferedIOBase, BinaryIO):
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.close()
 
-    def close(self) -> None:
-        self.stream.close()
-
     def fileno(self) -> int:
         return self.stream.fileno()
 
     def flush(self) -> None:
-        self.stream.flush()
+        return None
 
     def isatty(self) -> bool:
         return self.stream.isatty()
@@ -51,23 +94,17 @@ class SizeLimitedStream(io.BufferedIOBase, BinaryIO):
     def readable(self) -> bool:
         return True
 
-    def readline(self, limit: int | None = -1) -> bytes:
-        return self.stream.readline(limit if limit is not None else -1)
-
-    def readlines(self, hint: int = -1) -> list[bytes]:
-        return self.stream.readlines(hint)
-
     def seek(self, offset: int, whence: int = 0) -> int:
-        return self.stream.seek(offset, whence)
+        raise io.UnsupportedOperation("seek")
 
     def seekable(self) -> bool:
-        return self.stream.seekable()
+        return False
 
     def tell(self) -> int:
-        return self.stream.tell()
+        return self.total_read
 
     def truncate(self, size: int | None = None) -> int:
-        return self.stream.truncate(size)
+        raise io.UnsupportedOperation("truncate")
 
     def writable(self) -> bool:
         return False

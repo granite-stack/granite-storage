@@ -49,6 +49,22 @@ def sha256_bytes(content: bytes) -> str:
     return f"sha256:{hashlib.sha256(content).hexdigest()}"
 
 
+def verify_declared_checksum(declared: str | None, sha256_hex: str) -> None:
+    """Check a caller-declared checksum against the computed SHA-256.
+
+    Only ``sha256:<hex>`` declarations are accepted.
+
+    Raises:
+        StorageError: if the declaration uses another algorithm or differs.
+    """
+    if declared is None:
+        return
+    if not declared.startswith("sha256:"):
+        raise StorageError("Unsupported declared checksum: only sha256 is accepted.")
+    if declared != f"sha256:{sha256_hex}":
+        raise StorageError("Declared checksum does not match content.")
+
+
 def guess_content_type(
     filename: str | None, fallback: str = "application/octet-stream"
 ) -> str:

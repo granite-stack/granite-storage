@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import Any, BinaryIO, ClassVar
 
 try:
     from fastapi import UploadFile
-except Exception:  # pragma: no cover
+except ImportError:  # pragma: no cover
 
     class UploadFile:  # type: ignore
         pass
@@ -79,6 +80,31 @@ class StoredContentMixin:
         self._set_ref(ref)
         return ref
 
+    def _put_stream(
+        self,
+        stream: BinaryIO,
+        *,
+        filename: str | None,
+        content_type: str | None,
+        storage_key: str | None,
+        extra: dict[str, Any] | None,
+        operation: str,
+    ) -> StoredObjectRef:
+        """Store *stream* and return the ref without touching the entity."""
+        entity_id = getattr(self, "id", None)
+        if entity_id is None:
+            raise StorageError(f"Model instance must have an id before {operation}().")
+        return self._require_storage_manager().put_stream(
+            storage_key=storage_key or self.__stored_content_storage_key__,
+            model_name=self.__tablename__,
+            entity_id=entity_id,
+            field_name=self.__stored_content_field_name__.lstrip("_"),
+            stream=stream,
+            content_type=content_type or guess_content_type(filename),
+            original_filename=filename,
+            extra=extra,
+        )
+
     def set_content_from_stream(
         self,
         stream: BinaryIO,
@@ -88,20 +114,14 @@ class StoredContentMixin:
         storage_key: str | None = None,
         extra: dict[str, Any] | None = None,
     ) -> StoredObjectRef:
-        entity_id = getattr(self, "id", None)
-        if entity_id is None:
-            raise StorageError(
-                "Model instance must have an id before set_content_from_stream()."
-            )
-        ref = self._require_storage_manager().put_stream(
-            storage_key=storage_key or self.__stored_content_storage_key__,
-            model_name=self.__tablename__,
-            entity_id=entity_id,
-            field_name=self.__stored_content_field_name__.lstrip("_"),
-            stream=stream,
-            content_type=content_type or guess_content_type(filename),
-            original_filename=filename,
+        """Store *stream* (synchronous; the stream stays open for the caller)."""
+        ref = self._put_stream(
+            stream,
+            filename=filename,
+            content_type=content_type,
+            storage_key=storage_key,
             extra=extra,
+            operation="set_content_from_stream",
         )
         self._set_ref(ref)
         return ref
@@ -113,14 +133,26 @@ class StoredContentMixin:
         storage_key: str | None = None,
         extra: dict[str, Any] | None = None,
     ) -> StoredObjectRef:
-        upload_file.file.seek(0)
-        return self.set_content_from_stream(
-            upload_file.file,
-            filename=upload_file.filename,
-            content_type=upload_file.content_type,
-            storage_key=storage_key,
-            extra=extra,
-        )
+        """Store a FastAPI ``UploadFile`` without blocking the event loop.
+
+        The blocking I/O (disk or network) runs in a worker thread; the
+        entity itself is only modified back on the calling thread.
+        """
+
+        def work() -> StoredObjectRef:
+            upload_file.file.seek(0)
+            return self._put_stream(
+                upload_file.file,
+                filename=upload_file.filename,
+                content_type=upload_file.content_type,
+                storage_key=storage_key,
+                extra=extra,
+                operation="set_content_from_uploadfile",
+            )
+
+        ref = await asyncio.to_thread(work)
+        self._set_ref(ref)
+        return ref
 
     def replace_content(
         self,
