@@ -68,3 +68,52 @@ def test_replace_content_returns_previous_ref(manager):
     assert result.previous_ref == first
     assert result.new_ref.location != first.location
     assert obj.get_content() == b"dos"
+
+
+def test_replace_content_does_not_overwrite_previous_object(manager):
+    """GS-001: deleting the previous ref must not delete the new content."""
+    DummyModel.configure_storage_manager(manager)
+    obj = DummyModel(id=str(uuid.uuid4()))
+    obj.set_content(b"uno", filename="a.txt")
+    result = obj.replace_content(b"dos", filename="b.txt")
+    assert result.previous_ref is not None
+    assert result.previous_ref.location != result.new_ref.location
+    assert manager.get(result.previous_ref) == b"uno"
+    manager.delete(result.previous_ref)
+    assert manager.get(result.new_ref) == b"dos"
+
+
+def test_two_fields_of_same_entity_do_not_collide(manager):
+    """GS-001: field_name takes part in the key."""
+    a = manager.put_bytes(
+        storage_key="dummy_content",
+        model_name="m",
+        entity_id="e1",
+        field_name="f",
+        content=b"aaa",
+        original_filename="x.txt",
+    )
+    b = manager.put_bytes(
+        storage_key="dummy_content",
+        model_name="m",
+        entity_id="e1",
+        field_name="g",
+        content=b"bbb",
+        original_filename="x.txt",
+    )
+    assert a.location != b.location
+    assert manager.get(a) == b"aaa"
+    assert manager.get(b) == b"bbb"
+
+
+def test_entity_id_and_field_name_must_be_single_segments(manager):
+    from granite_storage.exceptions import StorageError
+
+    for kwargs in (
+        {"entity_id": "a/b", "field_name": "f"},
+        {"entity_id": "e", "field_name": "f/../g"},
+    ):
+        with pytest.raises(StorageError):
+            manager.put_bytes(
+                storage_key="dummy_content", model_name="m", content=b"x", **kwargs
+            )

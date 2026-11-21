@@ -67,6 +67,12 @@ def safe_suffix(filename: str | None) -> str:
     return suffix if suffix.startswith(".") else f".{suffix}"
 
 
+def _require_segment(value: str, label: str) -> str:
+    if not value or "/" in value or "\\" in value:
+        raise StorageError(f"Invalid {label}: must be a single path segment.")
+    return value
+
+
 def build_storage_object_key(
     *,
     model_name: str,
@@ -74,22 +80,30 @@ def build_storage_object_key(
     field_name: str | None = None,
     original_filename: str | None = None,
 ) -> str:
-    """Generate a storage key using a dedicated UUID subdirectory.
+    """Generate a unique storage key for one write of one field of an entity.
 
-    Layout: ``{model_name}/{file_uuid}/{file_uuid}{ext}``
+    Layout: ``{model_name}/{entity_id}/{field_name}/{object_uuid}{ext}``
+    (the ``{field_name}`` segment is omitted when *field_name* is ``None``).
 
-    The UUID subfolder isolates each stored object so that a CloudFront
-    wildcard policy (``{model_name}/{file_uuid}/*``) can cover the file and
-    any future derivatives (thumbnails, transcoded variants, etc.) with a
-    single signed credential.
+    ``object_uuid`` is a fresh UUID on EVERY call, so:
 
-    If *entity_id* is provided it is used as the UUID segment; otherwise a
-    fresh UUID is generated.
+    * replacing the content of a field never overwrites the previous object
+      (the previous reference stays valid until the caller deletes it), and
+    * two fields of the same entity never collide.
+
+    Everything an entity owns lives under ``{model_name}/{entity_id}/``, so a
+    single CloudFront wildcard policy can cover it.
+
+    Keys written by earlier versions (``{model}/{id}/{id}{ext}``) are not
+    changed: readers always use the ``location`` stored in the reference.
     """
-    file_uuid = str(entity_id) if entity_id is not None else str(uuid.uuid4())
-    if "/" in file_uuid:
-        raise StorageError("Invalid entity_id: must be a single path segment.")
-    suffix = safe_suffix(original_filename)
-    return validate_storage_key(
-        posixpath.join(model_name, file_uuid, f"{file_uuid}{suffix}")
+    entity_segment = (
+        _require_segment(str(entity_id), "entity_id")
+        if entity_id is not None
+        else str(uuid.uuid4())
     )
+    parts = [model_name, entity_segment]
+    if field_name:
+        parts.append(_require_segment(field_name, "field_name"))
+    parts.append(f"{uuid.uuid4()}{safe_suffix(original_filename)}")
+    return validate_storage_key(posixpath.join(*parts))

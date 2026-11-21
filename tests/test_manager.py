@@ -124,18 +124,14 @@ def test_build_location_with_key_prefix(tmp_path: Path) -> None:
         content=b"x",
         original_filename="report.pdf",
     )
-    # Layout: docs/Report/{uuid}/{uuid}.pdf
-    assert "docs" in ref.location
+    # Layout: docs/Report/{entity_id}/{field}/{object_uuid}.pdf
     parts = ref.location.split("/")
-    # prefix/model/uuid_folder/uuid_filename
-    assert len(parts) == 4
-    uuid_folder = parts[-2]
-    uuid_filename_stem = parts[-1].removesuffix(".pdf")
-    assert uuid_folder == uuid_filename_stem  # folder name == filename stem
-    # Both must be valid UUIDs
+    assert parts[:4] == ["docs", "Report", "abc", "attachment"]
+    assert len(parts) == 5
+    assert parts[-1].endswith(".pdf")
     import uuid as _uuid
-    _uuid.UUID(uuid_folder)  # raises if not valid UUID
-    assert ref.location.endswith(".pdf")
+
+    _uuid.UUID(parts[-1].removesuffix(".pdf"))  # object name is a fresh UUID
 
 
 def test_put_bytes_no_prefix(tmp_path: Path) -> None:
