@@ -9,7 +9,7 @@ from granite_storage.utils import validate_storage_key
 class StoragePolicy:
     """Maps a ``storage_key`` to a backend plus limits and key layout.
 
-    Attributes:
+    Fields:
         storage_key: policy name stored in every reference.
         backend_key: key of the backend in ``StorageManager.backends``.
         max_size: maximum object size in bytes (``None`` = unlimited).

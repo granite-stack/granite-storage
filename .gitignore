@@ -210,3 +210,6 @@ terraform.rc
 
 # graphify knowledge-graph output (generated)
 graphify-out/
+
+# Generated Sphinx output (built by `make docs` / CI)
+/docs/
