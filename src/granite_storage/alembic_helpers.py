@@ -1,12 +1,13 @@
 from typing import Any
 
-from sqlalchemy import JSON
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import TypeEngine
+
+from granite_storage.types import StorageJSONType
 
 
 def portable_storage_ref_type() -> TypeEngine[Any]:
-    return JSON().with_variant(JSONB(), "postgresql")
+    """Column type for refs in migrations (same definition as the ORM type)."""
+    return StorageJSONType.copy()
 
 
 EXAMPLE_POSTGRESQL_TEXT_TO_STORAGE_REF = """
