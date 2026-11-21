@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from typing import Any
 
 
@@ -37,4 +37,10 @@ class StoredObjectRef:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> StoredObjectRef:
-        return cls(**data)
+        """Build a ref from a dict, ignoring keys this version does not know.
+
+        Unknown keys (written by a newer version) are dropped instead of
+        failing the whole row load; missing required fields still raise.
+        """
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in known})

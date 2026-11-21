@@ -21,6 +21,11 @@ class StoragePolicy:
             accepted for reading/deleting and scanned by the garbage
             collector, but never used for new writes. Use this when you
             change ``key_prefix`` on a deployment that already has data.
+        allowed_content_types: if set, only these media types are accepted on
+            write (``"image/png"`` or a wildcard such as ``"image/*"``).
+            The client-declared type is never trusted for anything else:
+            serve stored objects with ``Content-Disposition: attachment`` and
+            ``X-Content-Type-Options: nosniff`` unless you control the type.
     """
 
     storage_key: str
@@ -28,6 +33,7 @@ class StoragePolicy:
     max_size: int | None = None
     key_prefix: str | None = None
     legacy_key_prefixes: tuple[str, ...] = ()
+    allowed_content_types: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
         for prefix in (self.key_prefix, *self.legacy_key_prefixes):

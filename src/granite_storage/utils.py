@@ -3,11 +3,12 @@ from __future__ import annotations
 import hashlib
 import mimetypes
 import posixpath
+import re
 import uuid
 from datetime import UTC, datetime
-from pathlib import Path, PureWindowsPath
+from pathlib import PurePosixPath, PureWindowsPath
 
-from granite_storage.exceptions import StorageError
+from granite_storage.exceptions import ContentTypeNotAllowedError, StorageError
 
 DEFAULT_STREAM_CHUNK_SIZE = 1024 * 1024
 
@@ -74,13 +75,59 @@ def guess_content_type(
     return guessed or fallback
 
 
+_SUFFIX_RE = re.compile(r"\.[A-Za-z0-9]{1,10}")
+_CONTENT_TYPE_RE = re.compile(
+    r"[a-z0-9][a-z0-9!#$&^_.+-]*/[a-z0-9][a-z0-9!#$&^_.+-]*(\s*;[^\x00-\x1f\x7f]*)?"
+)
+MAX_FILENAME_LENGTH = 255
+
+
 def safe_suffix(filename: str | None) -> str:
+    """Return the file extension, or ``""`` unless it is ``.`` + 1-10 alphanumerics."""
     if not filename:
         return ""
-    suffix = Path(filename).suffix.strip()
-    if not suffix:
-        return ""
-    return suffix if suffix.startswith(".") else f".{suffix}"
+    suffix = PurePosixPath(filename.replace("\\", "/")).suffix.strip()
+    return suffix if _SUFFIX_RE.fullmatch(suffix) else ""
+
+
+def sanitize_filename(filename: str | None) -> str | None:
+    """Reduce a client-supplied filename to a harmless display name.
+
+    Keeps only the last path component, removes control characters and
+    limits the length. Returns ``None`` if nothing is left.
+    """
+    if not filename:
+        return None
+    name = filename.replace("\\", "/").rsplit("/", 1)[-1]
+    name = "".join(ch for ch in name if ch.isprintable()).strip()
+    name = name[:MAX_FILENAME_LENGTH]
+    return name if name not in ("", ".", "..") else None
+
+
+def normalize_content_type(content_type: str | None) -> str | None:
+    """Validate the syntax of a content type and return it unchanged.
+
+    Raises:
+        ContentTypeNotAllowedError: if it is not ``type/subtype[; params]``
+            (for example if it contains control characters).
+    """
+    if content_type is None:
+        return None
+    if not _CONTENT_TYPE_RE.fullmatch(content_type.strip().lower()):
+        raise ContentTypeNotAllowedError("Invalid content type.")
+    return content_type.strip()
+
+
+def content_type_allowed(content_type: str | None, allowed: tuple[str, ...]) -> bool:
+    """Match the media type (without parameters) against exact/``type/*`` rules."""
+    if content_type is None:
+        return False
+    media = content_type.split(";", 1)[0].strip().lower()
+    for rule in allowed:
+        rule = rule.lower()
+        if rule == media or (rule.endswith("/*") and media.startswith(rule[:-1])):
+            return True
+    return False
 
 
 def _require_segment(value: str, label: str) -> str:

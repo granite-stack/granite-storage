@@ -1,14 +1,25 @@
 from __future__ import annotations
 
+import hashlib
 import io
 from collections.abc import Iterable
 from typing import Any, BinaryIO
 
 from granite_storage.contracts import StorageBackend
-from granite_storage.exceptions import ContentTooLargeError, StorageError
+from granite_storage.exceptions import (
+    ContentTooLargeError,
+    ContentTypeNotAllowedError,
+    StorageError,
+)
 from granite_storage.models import StoredObjectRef
 from granite_storage.policies import StoragePolicy
-from granite_storage.utils import build_storage_object_key
+from granite_storage.utils import (
+    build_storage_object_key,
+    content_type_allowed,
+    normalize_content_type,
+    sanitize_filename,
+    verify_declared_checksum,
+)
 
 
 class SizeLimitedStream(io.BufferedIOBase, BinaryIO):
@@ -144,6 +155,47 @@ class StorageManager:
         except KeyError as exc:
             raise StorageError(f"Unknown backend: {policy.backend_key}") from exc
 
+    def _check_write_metadata(
+        self,
+        policy: StoragePolicy,
+        content_type: str | None,
+        original_filename: str | None,
+    ) -> tuple[str | None, str | None]:
+        """Validate client-supplied metadata; return (content_type, filename)."""
+        content_type = normalize_content_type(content_type)
+        if policy.allowed_content_types is not None and not content_type_allowed(
+            content_type, policy.allowed_content_types
+        ):
+            raise ContentTypeNotAllowedError(
+                f"Content type {content_type!r} is not allowed for "
+                f"{policy.storage_key}."
+            )
+        return content_type, sanitize_filename(original_filename)
+
+    def _resolve_ref(self, ref: StoredObjectRef) -> tuple[StorageBackend, str]:
+        """Pick the backend for *ref* after checking it against the policy.
+
+        The reference must have been written by this policy's backend
+        (``ref.backend`` equal to the backend's ``backend_name``; an empty
+        value is tolerated for very old references) and its ``location`` must
+        lie under ``key_prefix`` or one of ``legacy_key_prefixes``.
+        """
+        policy = self.get_policy(ref.storage_key)
+        backend = self.get_backend_for_policy(policy)
+        backend_name = getattr(backend, "backend_name", None)
+        if ref.backend and backend_name and ref.backend != backend_name:
+            raise StorageError(
+                f"Reference was stored in backend '{ref.backend}' but policy "
+                f"'{policy.storage_key}' uses '{backend_name}'."
+            )
+        prefixes = policy.read_prefixes
+        if prefixes and not any(ref.location.startswith(f"{p}/") for p in prefixes):
+            raise StorageError(
+                f"Reference location is outside the prefixes of policy "
+                f"'{policy.storage_key}'."
+            )
+        return backend, policy.storage_key
+
     def _build_location(
         self,
         policy: StoragePolicy,
@@ -176,6 +228,9 @@ class StorageManager:
         extra: dict[str, Any] | None = None,
     ) -> StoredObjectRef:
         policy = self.get_policy(storage_key)
+        content_type, original_filename = self._check_write_metadata(
+            policy, content_type, original_filename
+        )
         if policy.max_size is not None and len(content) > policy.max_size:
             raise ContentTooLargeError(
                 f"Content size {len(content)} exceeds max_size="
@@ -212,6 +267,9 @@ class StorageManager:
         extra: dict[str, Any] | None = None,
     ) -> StoredObjectRef:
         policy = self.get_policy(storage_key)
+        content_type, original_filename = self._check_write_metadata(
+            policy, content_type, original_filename
+        )
         location = self._build_location(
             policy,
             model_name=model_name,
@@ -231,14 +289,19 @@ class StorageManager:
         ref.storage_key = storage_key
         return ref
 
-    def get(self, ref: StoredObjectRef) -> bytes:
-        return self.get_backend_for_policy(self.get_policy(ref.storage_key)).get(ref)
+    def get(self, ref: StoredObjectRef, *, verify_checksum: bool = False) -> bytes:
+        """Read an object; with ``verify_checksum`` compare it to ``ref.checksum``."""
+        backend, _ = self._resolve_ref(ref)
+        data = backend.get(ref)
+        if verify_checksum and ref.checksum:
+            verify_declared_checksum(ref.checksum, hashlib.sha256(data).hexdigest())
+        return data
 
     def open(self, ref: StoredObjectRef) -> BinaryIO:
-        return self.get_backend_for_policy(self.get_policy(ref.storage_key)).open(ref)
+        return self._resolve_ref(ref)[0].open(ref)
 
     def delete(self, ref: StoredObjectRef) -> None:
-        self.get_backend_for_policy(self.get_policy(ref.storage_key)).delete(ref)
+        self._resolve_ref(ref)[0].delete(ref)
 
     def exists(self, ref: StoredObjectRef) -> bool:
-        return self.get_backend_for_policy(self.get_policy(ref.storage_key)).exists(ref)
+        return self._resolve_ref(ref)[0].exists(ref)
