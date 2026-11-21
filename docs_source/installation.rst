@@ -4,9 +4,9 @@ Installation
 Requirements
 ------------
 
-* **Python**: 3.11 or higher
+* **Python**: 3.12 or higher
 * **SQLAlchemy**: 2.0 or higher (for ORM integration)
-* **boto3**: 1.34 or higher (required for S3 backend)
+* **boto3**: 1.34 or higher (optional, only for the S3 backend: ``pip install "granite-storage[s3]"``)
 
 Package Installation
 --------------------
@@ -34,13 +34,15 @@ Development Installation
 
 .. code-block:: bash
 
-   git clone https://github.com/impalah/granite-storage.git
+   git clone https://github.com/granite-stack/granite-storage.git
    cd granite-storage
    uv sync
 
 Optional Extras
 ---------------
 
-No additional extras are required. ``boto3`` is declared as a hard dependency to ensure
-S3 functionality is always available. If you only need local storage in a constrained
-environment you can install without it and stub the import — see :doc:`implementing-backend`.
+``s3``
+    Installs ``boto3`` for ``S3StorageBackend``
+    (``pip install "granite-storage[s3]"``). Without it the local backend works
+    normally and importing ``S3StorageBackend`` raises an ``ImportError`` that
+    names the extra.

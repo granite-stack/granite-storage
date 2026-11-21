@@ -22,28 +22,31 @@ FastAPI services and any async-friendly Python application.
 
 ## Requirements
 
-- Python 3.11+
+- Python 3.12+
 - SQLAlchemy 2.0+
-- boto3 1.34+ (S3 backend)
+- boto3 1.34+ (only for the S3 backend, installed with the `s3` extra)
 
 ## Installation
 
 ```bash
-pip install granite-storage
+pip install granite-storage          # local backend only
+pip install "granite-storage[s3]"    # adds boto3 for the S3 backend
 ```
 
 With UV:
 
 ```bash
-uv add granite-storage
+uv add granite-storage              # or: uv add "granite-storage[s3]"
 ```
+
+`S3StorageBackend` raises an `ImportError` explaining this if boto3 is missing.
 
 For development:
 
 ```bash
-git clone https://github.com/impalah/granite-storage.git
+git clone https://github.com/granite-stack/granite-storage.git
 cd granite-storage
-uv sync
+uv sync --all-extras
 ```
 
 ## Quick Start
@@ -131,9 +134,10 @@ with Session(engine) as session:
     with doc.open_content() as fh:
         first_chunk = fh.read(8192)
 
-    # Replace (returns previous ref for manual cleanup or GC)
+    # Replace: every write goes to a NEW object key, so the old object is
+    # still intact until you delete it (after the commit succeeds).
     result = doc.replace_content(new_bytes, filename="report-v2.pdf")
-    # result.previous_ref — the old StoredObjectRef
+    # result.previous_ref — the old StoredObjectRef (delete it after commit)
     # result.new_ref      — the new StoredObjectRef
 
     # Remove the reference (does NOT delete the physical file)
@@ -202,6 +206,29 @@ except StorageError:
     ...
 ```
 
+## Object keys and policy validation
+
+Each write creates `{key_prefix}/{model}/{entity_id}/{field}/{uuid}{ext}`; the
+UUID is new on every write, so replacing content never overwrites the previous
+object and two fields of one entity never collide. Keys written by earlier
+versions (`{model}/{id}/{id}{ext}`) stay readable because the stored
+`location` is always used.
+
+On read/delete the manager checks that `ref.backend` is the policy's backend
+and that `ref.location` lies under the policy `key_prefix` or one of
+`legacy_key_prefixes`. If you ever change a policy `key_prefix` on a
+deployment with data, keep the old value so existing refs stay valid:
+
+```python
+StoragePolicy("documents", "local", key_prefix="docs_v2",
+              legacy_key_prefixes=("docs",))
+```
+
+Other policy options: `allowed_content_types=("image/*", "application/pdf")`.
+Client-supplied filenames are sanitized and content types validated; serve
+stored files with `Content-Disposition: attachment` and `nosniff`.
+`manager.get(ref, verify_checksum=True)` verifies the SHA-256 on read.
+
 ## Garbage Collection
 
 ```python
@@ -221,6 +248,12 @@ with Session(engine) as session:
     report = gc.collect(storage_key="documents", dry_run=False)
     print(f"Deleted: {report.deleted}")
 ```
+
+Safeguards: only objects older than `min_age` (default 24 h) are deleted, so
+uploads whose transaction has not committed yet are safe; the policy must have a
+`key_prefix`; `iter_references` must yield the references of **every** model
+that uses the policy, and a real run aborts if it yields none while objects exist
+(`force=True` overrides); delete errors are collected in `report.errors`.
 
 ## Alembic Migration Helper
 

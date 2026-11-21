@@ -75,7 +75,14 @@ Method Contracts
 
 ``iter_locations(prefix)``
     Yield every *location* (string key) stored in the backend, optionally filtered
-    by ``prefix``.  Used by the garbage collector.
+    by ``prefix``.  The prefix matches whole path segments (``"docs"`` matches
+    ``docs/a`` but not ``docs2/a``).  Used by the garbage collector.
+
+``last_modified(location)`` (optional)
+    Return the object's modification time as a timezone-aware ``datetime`` (or
+    ``None`` if absent). The garbage collector uses it for its grace period; a
+    backend without it never has objects deleted by the collector unless
+    ``min_age`` is zero.
 
 Example — Google Cloud Storage Backend
 ---------------------------------------

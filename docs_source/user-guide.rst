@@ -68,9 +68,15 @@ The ``key_prefix`` is an optional path segment prepended to the generated object
 inside the backend. For example:
 
 * ``key_prefix="avatars"`` + ``model_name="user"`` + ``entity_id="42"`` + ``field_name="avatar"``
-  → location ``avatars/user/42/avatar/<filename>``
+  → location ``avatars/user/42/avatar/<uuid>.<ext>`` (a fresh UUID per write)
 
 Without a prefix the location starts directly with ``model_name``.
+
+Every write gets a new object name, so replacing content never overwrites the
+previous object. On read and delete the manager checks the reference against the
+policy: ``ref.backend`` must be the policy backend and ``ref.location`` must be
+under ``key_prefix`` or one of ``legacy_key_prefixes`` (use it when you change
+``key_prefix`` on a deployment that already has data).
 
 Storing Content
 ---------------

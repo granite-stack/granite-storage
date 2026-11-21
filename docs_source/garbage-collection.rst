@@ -50,6 +50,20 @@ Basic Usage
        report = gc.collect(storage_key="documents", dry_run=False)
        print(f"Deleted {report.deleted} orphaned objects")
 
+Safeguards
+----------
+
+* **Grace period** — only objects older than ``min_age`` (default 24 hours) are
+  deleted, so an upload whose transaction has not committed yet is not
+  collected. Objects whose age is unknown are skipped.
+* **Scoped** — the policy must define ``key_prefix`` (the whole backend is never
+  scanned unless ``allow_unscoped=True``). ``legacy_key_prefixes`` are scanned too.
+* **Complete references** — ``iter_references`` must yield the references of every
+  model that uses the policy. If it yields none but objects exist, a real run
+  raises ``StorageError`` unless ``force=True``.
+* **Resilient** — a failure deleting one object is recorded in
+  ``report.errors`` and the run continues.
+
 GarbageCollectionReport
 ------------------------
 
@@ -61,6 +75,8 @@ GarbageCollectionReport
        referenced: int  # objects with a live DB reference
        orphaned: int    # objects with no DB reference
        deleted: int     # objects actually deleted (0 if dry_run=True)
+       skipped_recent: int  # orphans kept by the grace period
+       errors: list[str]    # per-object failures
 
 Scheduling
 ----------
