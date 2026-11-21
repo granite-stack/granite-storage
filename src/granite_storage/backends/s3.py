@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import posixpath
 from collections.abc import Iterator
 from typing import Any, BinaryIO, cast
 
@@ -11,7 +10,12 @@ from botocore.exceptions import ClientError
 from granite_storage.contracts import StorageBackend
 from granite_storage.exceptions import StorageError
 from granite_storage.models import StoredObjectRef
-from granite_storage.utils import DEFAULT_STREAM_CHUNK_SIZE, sha256_bytes, utcnow_iso
+from granite_storage.utils import (
+    DEFAULT_STREAM_CHUNK_SIZE,
+    sha256_bytes,
+    utcnow_iso,
+    validate_storage_key,
+)
 
 
 class S3StorageBackend(StorageBackend):
@@ -31,7 +35,8 @@ class S3StorageBackend(StorageBackend):
         self.extra_put_kwargs = extra_put_kwargs or {}
 
     def _full_key(self, location: str) -> str:
-        return posixpath.join(self.prefix, location) if self.prefix else location
+        validate_storage_key(location)
+        return f"{self.prefix}/{location}" if self.prefix else location
 
     def _strip_prefix(self, key: str) -> str:
         if not self.prefix:
@@ -172,7 +177,8 @@ class S3StorageBackend(StorageBackend):
     def iter_locations(self, prefix: str | None = None) -> Iterator[str]:
         list_prefix = self.prefix
         if prefix:
-            list_prefix = posixpath.join(list_prefix, prefix) if list_prefix else prefix
+            validate_storage_key(prefix, is_prefix=True)
+            list_prefix = f"{list_prefix}/{prefix}" if list_prefix else prefix
         try:
             paginator = self.client.get_paginator("list_objects_v2")
             for page in paginator.paginate(

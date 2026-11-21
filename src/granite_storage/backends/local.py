@@ -7,7 +7,12 @@ from typing import Any, BinaryIO
 from granite_storage.contracts import StorageBackend
 from granite_storage.exceptions import StorageError
 from granite_storage.models import StoredObjectRef
-from granite_storage.utils import DEFAULT_STREAM_CHUNK_SIZE, sha256_bytes, utcnow_iso
+from granite_storage.utils import (
+    DEFAULT_STREAM_CHUNK_SIZE,
+    sha256_bytes,
+    utcnow_iso,
+    validate_storage_key,
+)
 
 
 class LocalStorageBackend(StorageBackend):
@@ -17,9 +22,13 @@ class LocalStorageBackend(StorageBackend):
         self.root_dir = Path(root_dir).resolve()
         self.root_dir.mkdir(parents=True, exist_ok=True)
 
-    def _resolve_path(self, location: str) -> Path:
+    def _resolve_path(self, location: str, *, is_prefix: bool = False) -> Path:
+        try:
+            validate_storage_key(location, is_prefix=is_prefix)
+        except StorageError as exc:
+            raise StorageError(f"Invalid local storage path. {exc}") from exc
         path = (self.root_dir / location).resolve()
-        if self.root_dir not in path.parents and path != self.root_dir:
+        if not path.is_relative_to(self.root_dir):
             raise StorageError("Invalid local storage path.")
         return path
 
@@ -105,7 +114,9 @@ class LocalStorageBackend(StorageBackend):
         return self._resolve_path(ref.location).exists()
 
     def iter_locations(self, prefix: str | None = None) -> Iterator[str]:
-        base = self.root_dir if not prefix else self._resolve_path(prefix)
+        base = (
+            self.root_dir if not prefix else self._resolve_path(prefix, is_prefix=True)
+        )
         if not base.exists():
             return
         for path in base.rglob("*"):
