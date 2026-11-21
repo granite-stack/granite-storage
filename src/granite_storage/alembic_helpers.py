@@ -1,9 +1,11 @@
+from typing import Any
+
 from sqlalchemy import JSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import TypeEngine
 
 
-def portable_storage_ref_type() -> TypeEngine[dict[str, object]]:
+def portable_storage_ref_type() -> TypeEngine[Any]:
     return JSON().with_variant(JSONB(), "postgresql")
 
 
