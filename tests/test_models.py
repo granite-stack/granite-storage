@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from granite_storage.models import StoredObjectRef
 
 
@@ -29,7 +27,9 @@ class TestToUri:
         assert ref.to_uri() == "file:///srv/data/abc.md"
 
     def test_s3_backend(self):
-        ref = _make_ref(backend="s3", location="activity/abc/abc.md", extra={"bucket": "my-bucket"})
+        ref = _make_ref(
+            backend="s3", location="activity/abc/abc.md", extra={"bucket": "my-bucket"}
+        )
         assert ref.to_uri() == "s3://my-bucket/activity/abc/abc.md"
 
     def test_s3_missing_bucket_returns_none(self):
